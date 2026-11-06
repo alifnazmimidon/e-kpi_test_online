@@ -52,7 +52,6 @@ class FypController extends Controller
     public function workerProfile()
         {
         $user = Auth::user() ?? User::first(); 
-
         $kpiScores = (object) [
             'user_score'    => $user->kpi_score ?? 75,
             'dept_score'    => $user->department->target_score ?? 80,
@@ -76,7 +75,6 @@ class FypController extends Controller
 
         // Purata sasaran jabatan Quarter 3
         $targetAchievement = round(Department::where('quarter', 'Q3')->avg('target_score') ?? 0, 1);
-        
         // Trend berbanding Quarter 2
         $q2Avg = Department::where('quarter', 'Q2')->avg('target_score') ?? 0;
         $kpiTrendDiff = round($targetAchievement - $q2Avg, 1);
@@ -161,7 +159,7 @@ class FypController extends Controller
 
         return view('hr', compact(
             'avgKpiScore', 
-            'unhealthyStaffCount', 
+            'unhealthyStaffCount',
             'targetAchievement', 
             'kpiTrendDiff',
             'departmentsPerformance', 

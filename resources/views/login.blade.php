@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EKPI - Login</title>
-    <link rel="stylesheet" href="{{ asset('style.css') }}">
+    <!-- Tambah ?v=2 untuk paksa browser muat turun CSS baharu -->
+    <link rel="stylesheet" href="{{ asset('style.css') }}?v=2">
 </head>
 <body>
     <section class="login-page" id="loginPage">
@@ -21,11 +22,23 @@
 
                 <h1 class="welcome-title">WELCOME BACK</h1>
                 <p class="system-name">E-KPI SYSTEM</p>
-
-                <!-- PAPARKAN MESEJ RALAT JIKA LOGIN GAGAL -->
-                @if(session('error'))
-                    <div style="color: red; margin-bottom: 15px; font-weight: bold; text-align: center;">
+               <!-- PAPARKAN MESEJ RALAT JIKA LOGIN GAGAL -->
+                @if (session('error'))
+                    <p style="color: #E31B23 !important; font-weight: 600; margin-bottom: 12px; text-align: center;">
                         {{ session('error') }}
+                    </p>
+                @endif
+
+                @if ($errors->any())
+                    <p style="color: #E31B23 !important; font-weight: 600; margin-bottom: 12px; text-align: center;">
+                        {{ $errors->first() }}
+                    </p>
+                @endif
+
+                <!-- PAPARKAN MESEJ BERJAYA SELEPAS RESET PASSWORD -->
+                @if(session('success'))
+                    <div style="color: #16a34a; margin-bottom: 15px; font-weight: bold; text-align: center;">
+                        {{ session('success') }}
                     </div>
                 @endif
 
@@ -42,7 +55,7 @@
                                 id="workerID"
                                 name="worker_id"
                                 value="{{ old('worker_id') }}"
-                                placeholder="Contoh: ILM3003"
+                                placeholder="e.g., ILM3003"
                                 required
                             >
                         </div>
@@ -64,8 +77,13 @@
                                 type="button"
                                 onclick="togglePassword()"
                                 id="eyeButton"
+                                aria-label="Toggle password visibility"
                             >
-                                ◉
+                                <!-- SVG BULAT BERISI (DEFAULT) -->
+                                <svg id="eyeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#18181B" stroke-width="2">
+                                    <circle cx="12" cy="12" r="9"/>
+                                    <circle cx="12" cy="12" r="4" fill="#18181B"/>
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -76,7 +94,9 @@
                     </button>
                 </form>
 
-                <p class="forgot-password">FORGOT PASSWORD ?</p>
+                <p class="forgot-password">
+                    <a href="{{ route('password.request') }}" class="forgot-link">FORGOT PASSWORD ?</a>
+                </p>
             </div>
         </div>
 
@@ -93,15 +113,16 @@
     </section>
 
     <script>
-        // FUNGSI TOGGLE PASSWORD VISIBILITY
         function togglePassword() {
             const password = document.getElementById("password");
-            const eyeButton = document.getElementById("eyeButton");
+            const eyeIcon = document.getElementById("eyeIcon");
 
             if (password.type === "password") {
                 password.type = "text";
+                eyeIcon.innerHTML = `<circle cx="12" cy="12" r="9"/>`;
             } else {
                 password.type = "password";
+                eyeIcon.innerHTML = `<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="#18181B"/>`;
             }
         }
     </script>

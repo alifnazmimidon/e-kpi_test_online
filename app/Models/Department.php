@@ -9,7 +9,13 @@ class Department extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'department_id'; 
+    protected $primaryKey = 'department_id';
 
-    protected $guarded = [];
+    protected $fillable = [
+        'department_name',
+        'quarter',
+        'target_score',
+        'assigned_by',
+        'status',
+    ];
 }

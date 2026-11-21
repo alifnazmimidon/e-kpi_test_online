@@ -1,0 +1,422 @@
+ /* =========================================
+     GLOBAL
+========================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+}
+
+body {
+    background: #f3f4f6;
+    color: #222;
+}
+
+button,
+input {
+     font-family: inherit;
+}
+
+/* =====================================================
+   FORGOT PASSWORD PAGE
+===================================================== */
+
+.forgot-page {
+
+    width: 100%;
+
+    min-height: 100vh;
+
+    display: flex;
+
+    background: #ffffff;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+}
+
+
+/* =====================================================
+   LEFT SIDE
+===================================================== */
+
+.forgot-left {
+
+    width: 42%;
+
+    min-height: 100vh;
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: center;
+
+    padding: 50px 70px;
+
+    background: #ffffff;
+
+}
+
+
+/* =====================================================
+   LOGO
+===================================================== */
+
+.forgot-logo {
+
+    width: 95px;
+
+    height: 70px;
+
+    margin-bottom: 35px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 11px;
+
+    text-align: center;
+
+    overflow: hidden;
+
+}
+
+
+.forgot-logo img {
+
+    width: 100%;
+
+    height: 100%;
+
+    object-fit: contain;
+
+}
+
+
+/* =====================================================
+   TITLE
+===================================================== */
+
+.forgot-title {
+
+    margin-bottom: 18px;
+
+}
+
+
+.forgot-title h1 {
+
+    margin: 0;
+
+    font-size: 30px;
+
+    font-weight: 700;
+
+    color: #18181B;
+
+}
+
+
+.forgot-title p {
+
+    margin-top: 7px;
+
+    margin-bottom: 0;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    color: #71717A;
+
+    letter-spacing: 0.3px;
+
+}
+
+
+/* =====================================================
+   DESCRIPTION
+===================================================== */
+
+.forgot-description {
+
+    max-width: 360px;
+
+    margin: 0 0 28px;
+
+    color: #71717A;
+
+    font-size: 13px;
+
+    line-height: 1.6;
+
+}
+
+
+/* =====================================================
+   FORM
+===================================================== */
+
+.forgot-form-group {
+
+    width: 100%;
+
+    margin-bottom: 22px;
+
+}
+
+
+.forgot-form-group label {
+
+    display: block;
+
+    margin-bottom: 8px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    color: #27272A;
+
+}
+
+
+.forgot-form-group input {
+
+    width: 100%;
+
+    height: 42px;
+
+    padding: 0 13px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #AAAAAA;
+
+    border-radius: 5px;
+
+    outline: none;
+
+    font-size: 13px;
+
+    color: #18181B;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+
+}
+
+
+.forgot-form-group input::placeholder {
+
+    color: #A1A1AA;
+
+}
+
+
+.forgot-form-group input:hover {
+
+    border-color: #777777;
+
+}
+
+
+.forgot-form-group input:focus {
+
+    border-color: #E51B23;
+
+    box-shadow:
+        0 0 0 3px rgba(229, 27, 35, 0.10);
+
+}
+
+
+/* =====================================================
+   BUTTON
+===================================================== */
+
+.forgot-button {
+
+    width: 100%;
+
+    height: 43px;
+
+    border: none;
+
+    border-radius: 5px;
+
+    background: #E51B23;
+
+    color: #ffffff;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+
+}
+
+
+.forgot-button:hover {
+
+    background: #C9141B;
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 6px 14px rgba(229, 27, 35, 0.20);
+
+}
+
+
+.forgot-button:active {
+
+    transform: translateY(0);
+
+}
+
+
+/* =====================================================
+   MESSAGE
+===================================================== */
+
+.forgot-message {
+
+    min-height: 18px;
+
+    margin-top: 14px;
+
+    font-size: 12px;
+
+}
+
+
+.forgot-message.error {
+
+    color: #E51B23;
+
+}
+
+
+.forgot-message.success {
+
+    color: #16A34A;
+
+}
+
+
+/* =====================================================
+   BACK TO LOGIN
+===================================================== */
+
+.back-login {
+
+    width: fit-content;
+
+    margin-top: 20px;
+
+    color: #71717A;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+    transition:
+        color 0.2s ease;
+
+}
+
+
+.back-login:hover {
+
+    color: #E51B23;
+
+}
+
+
+/* =====================================================
+   RIGHT SIDE
+===================================================== */
+
+.forgot-right {
+
+    width: 58%;
+
+    min-height: 100vh;
+
+    position: relative;
+
+    overflow: hidden;
+
+    background: #F4F4F5;
+
+}
+
+
+.forgot-right::after {
+
+    content: "";
+
+    position: absolute;
+
+    inset: 0;
+
+    background: rgba(255, 255, 255, 0.18);
+
+    pointer-events: none;
+
+}
+
+
+.forgot-right img {
+
+    width: 100%;
+
+    height: 100%;
+
+    object-fit: cover;
+
+    opacity: 0.65;
+
+}
+
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media (max-width: 800px) {
+
+    .forgot-left {
+
+        width: 100%;
+
+        padding: 40px;
+
+    }
+
+
+    .forgot-right {
+
+        display: none;
+
+    }
+
+}

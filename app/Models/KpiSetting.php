@@ -9,12 +9,15 @@ class KpiSetting extends Model
 {
     use HasFactory;
 
-    // Nama jadual pangkalan data
     protected $table = 'kpi_settings';
-
-    // Primary key sebenar dalam jadual kpi_settings
     protected $primaryKey = 'setting_id';
 
-    // Benarkan kemaskini data secara mass-assignment
-    protected $guarded = [];
+    protected $fillable = [
+        'tasks_weightage',
+        'attendance_weightage',
+        'leader_weightage',
+        'gold_threshold',
+        'silver_threshold',
+        'bronze_threshold',
+    ];
 }

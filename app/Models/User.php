@@ -13,25 +13,30 @@ class User extends Authenticatable
     protected $table = 'users';
 
     // 2. Tetapkan Primary Key jenis string ('ILM1004')
+    // 2. Tetapkan Primary Key jenis string ('ILM1004')
     protected $primaryKey = 'worker_id';
     public $incrementing = false;
     protected $keyType = 'string';
+    public $timestamps = false;
 
     // 3. Kolum yang boleh diisi
     protected $fillable = [
-        'worker_id',
-        'full_name',
-        'email',
-        'password_hash',
-        'department_id',
-        'role',
-        'designation',
-    ];
+    'worker_id',
+    'full_name',
+    'email',
+    'department_id',
+    'designation',
+    'phone',
+    'positions',
+    'profile_photo',
+];
 
-    // 4. Sembunyikan hash password daripada output
     protected $hidden = [
-        'password_hash',
-    ];
+    'password_hash',
+    'remember_token',
+];
+
+    
 
     // 5. Beritahu Laravel kolum password bernama 'password_hash'
     public function getAuthPassword()

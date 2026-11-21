@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EKPI - Login</title>
-    <!-- Tambah ?v=2 untuk paksa browser muat turun CSS baharu -->
     <link rel="stylesheet" href="{{ asset('style.css') }}?v=2">
 </head>
 <body>

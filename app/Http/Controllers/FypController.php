@@ -12,6 +12,11 @@ use App\Models\Task;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+//Import AI
+
+use App\Services\AIAnalysisService;
+use Illuminate\Support\Facades\Cache;
+
 class FypController extends Controller
 {
     // LOGIN
@@ -243,6 +248,19 @@ class FypController extends Controller
             $goldCount   = $quarterEvals->where('eom_badge', 'GOLD')->count();
             $silverCount = $quarterEvals->where('eom_badge', 'SILVER')->count();
 
+            // Cari Leader jabatan (jika status PENDING) atau staf skor terendah (jika prestasi rendah)
+            $deptLeaderId = User::whereIn('department_id', $allDeptIdsWithSameName)
+                ->whereRaw('UPPER(role) = ?', ['LEADER'])
+                ->value('worker_id');
+
+            $lowestStaffId = (clone $staffQuery)
+                ->orderBy('kpi_score', 'asc')
+                ->value('worker_id');
+
+            $targetWorkerId = !$isComplete
+                ? ($deptLeaderId ?? $lowestStaffId)
+                : ($lowestStaffId ?? $deptLeaderId);
+
             return (object) [
                 'department_name'   => $dept->department_name,
                 'avg_kpi'           => round($avgKpi, 1),
@@ -252,8 +270,11 @@ class FypController extends Controller
                 'status'            => $isComplete ? 'COMPLETE' : 'PENDING',
                 'gold_badges'       => $goldCount,
                 'silver_badges'     => $silverCount,
+                'target_worker_id'  => $targetWorkerId,
             ];
         });
+
+        
 
         $selectedDeptName = $request->get('dept_filter', 'WEBTECH');
         $matchingDeptIds = Department::where('department_name', 'LIKE', '%' . $selectedDeptName . '%')
@@ -292,26 +313,35 @@ class FypController extends Controller
         $topWorker = User::orderBy('kpi_score', 'desc')->first();
         $topDept   = Department::where('quarter', $currentQuarter)->orderBy('target_score', 'desc')->first();
 
-        $aiInsights = [
-            [
-                'tag'   => 'AI Recommendation',
-                'title' => ($topWorker->full_name ?? 'Staff') . ' (' . ($selectedDeptName) . ')',
-                'desc'  => 'Recommended for the Excellence Award based on the highest KPI score in the database.',
-                'stat'  => ($topWorker->kpi_score ?? 0) . '% Efficiency Rating'
-            ],
-            [
-                'tag'   => 'Predictive Alert',
-                'title' => ($topDept->department_name ?? 'R&D') . ' Department Trend',
-                'desc'  => 'Department target achievement is currently leading at ' . ($topDept->target_score ?? 0) . '% for Quarter ' . $qNum . ' (' . $currentQuarter . ').',
-                'stat'  => '+' . ($topDept->target_score ?? 0) . '% Average Target'
-            ],
-            [
-                'tag'   => 'Workload Optimisation',
-                'title' => 'Staff Workload Alert',
-                'desc'  => $unhealthyStaffCount . ' staff member(s) detected requiring attention and task redistribution.',
-                'stat'  => $unhealthyStaffCount . ' At-Risk Staff'
-            ]
-        ];
+        // Simpan cache selama 6 jam supaya dashboard kekal laju tanpa tunggu API setiap kali refresh
+        $aiPayload = Cache::remember('hr_ai_overview_insights', now()->addHours(6), function () {
+            return app(AIAnalysisService::class)->analyzeHrOverview();
+        });
+
+        $aiSource = $aiPayload['source'] ?? 'fallback';
+
+        // Padankan kunci JSON daripada Gemini (summary & recommendation) ke format kad UI (desc & stat)
+        $aiInsights = collect($aiPayload['insights'] ?? [])->map(function ($item) {
+            return [
+                'tag'   => $item['tag'] ?? 'AI Insight',
+                'title' => $item['title'] ?? 'Performance Update',
+                'desc'  => $item['summary'] ?? ($item['desc'] ?? ''),
+                'stat'  => !empty($item['recommendation'])
+                    ? 'Action: ' . $item['recommendation']
+                    : ($item['stat'] ?? ''),
+            ];
+        })->values()->all();
+
+        if (empty($aiInsights)) {
+            $aiInsights = [
+                [
+                    'tag'   => 'AI Recommendation',
+                    'title' => ($topWorker->full_name ?? 'Staff') . ' (' . ($selectedDeptName) . ')',
+                    'desc'  => 'Recommended for the Excellence Award based on the highest KPI score in the database.',
+                    'stat'  => ($topWorker->kpi_score ?? 0) . '% Efficiency Rating',
+                ],
+            ];
+        }
 
         return view('hr', compact(
             'avgKpiScore',
@@ -322,8 +352,43 @@ class FypController extends Controller
             'badgeRankings',
             'selectedDeptName',
             'kpiTrend',
-            'aiInsights'
+            'aiInsights',
+            'aiSource'
         ));
+    }
+
+    // JANA SEMULA ANALISIS AI SECARA LANGSUNG (BUTANG REFRESH)
+    public function refreshAiInsights(AIAnalysisService $aiService)
+    {
+        Cache::forget('hr_ai_overview_insights');
+
+        $aiPayload = Cache::remember('hr_ai_overview_insights', now()->addHours(6), function () use ($aiService) {
+            return $aiService->analyzeHrOverview();
+        });
+
+        $sourceLabel = ($aiPayload['source'] ?? '') === 'gemini-ai' ? 'Gemini AI Live' : 'Smart Fallback';
+
+        return back()->with('success', "AI Insights updated ({$sourceLabel}).");
+    }
+
+    // JANA DRAF EMEL PERINGATAN AUTOMATIK BERBANTUKAN AI
+    // JANA DRAF EMEL PERINGATAN AUTOMATIK BERBANTUKAN AI
+    public function generateAiReminderDraft(Request $request, AIAnalysisService $aiService)
+    {
+        $request->validate([
+            'worker_id' => 'required|string',
+            'variation' => 'nullable|integer|min:1|max:20',
+        ]);
+
+        $draft = $aiService->generateReminderDraft(
+            $request->worker_id,
+            (int) $request->input('variation', 1)
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'draft'  => $draft,
+        ]);
     }
 
     public function kpiManagement(Request $request)
@@ -1087,12 +1152,15 @@ class FypController extends Controller
     {
         $validated = $request->validate([
             'worker_id' => 'required|string|exists:users,worker_id',
-            'rating'    => 'nullable|numeric|min:0|max:40',
+            'eval'      => 'required|array',
+            'eval.q1'   => 'required|numeric|min:0|max:10',
+            'eval.q2'   => 'required|numeric|min:0|max:10',
+            'eval.q3'   => 'required|numeric|min:0|max:10',
+            'eval.q4'   => 'required|numeric|min:0|max:10',
         ]);
 
-        $leader    = Auth::user();
-        $workerId  = $validated['worker_id'];
-        $ratingVal = $validated['rating'];
+        $leader   = Auth::user();
+        $workerId = $validated['worker_id'];
 
         $evalYear  = (int) date('Y');
         $evalMonth = (int) date('n');
@@ -1103,6 +1171,14 @@ class FypController extends Controller
             ->where('evaluation_year', $evalYear)
             ->first();
 
+        // Kawalan UX: Jika sudah dinilai, pindaan mesti melalui Dedicated Page (/leader/input-rating)
+        if ($existing && strtoupper((string) $existing->evaluation_status) !== 'PENDING' && (float) $existing->leader_score > 0) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'This staff evaluation is already submitted. Please use the Revise button to edit on the KPI Management page.',
+            ], 422);
+        }
+
         if ($existing) {
             $tasksScore = (float) $existing->tasks_score;
             $attScore   = (float) $existing->attendance_score;
@@ -1111,32 +1187,27 @@ class FypController extends Controller
             $attScore   = 20.00;
         }
 
-        if ($ratingVal === null) {
-            $totalScore = round($tasksScore + $attScore, 2);
-            $payload = [
-                'leader_score'        => 0.00,
-                'total_score'         => $totalScore,
-                'eom_badge'           => 'NONE',
-                'evaluation_status'   => 'PENDING',
-                'submitted_by_leader' => null,
-                'submitted_at'        => null,
-            ];
-        } else {
-            $rating     = round((float) $ratingVal, 1);
-            $totalScore = round($tasksScore + $attScore + $rating, 2);
-            $status     = $totalScore >= 90 ? 'EXCELLENCE' : ($totalScore >= 80 ? 'GOOD' : 'ATTENTION');
+        $criteria = [
+            'q1' => round((float) $validated['eval']['q1'], 1),
+            'q2' => round((float) $validated['eval']['q2'], 1),
+            'q3' => round((float) $validated['eval']['q3'], 1),
+            'q4' => round((float) $validated['eval']['q4'], 1),
+        ];
 
-            $payload = [
-                'leader_score'        => $rating,
-                'total_score'         => $totalScore,
-                'evaluation_status'   => $status,
-                'submitted_by_leader' => $leader->worker_id,
-                'submitted_at'        => now(),
-            ];
-        }
+        $rating     = round(array_sum($criteria), 1);
+        $totalScore = round($tasksScore + $attScore + $rating, 2);
+        $status     = $totalScore >= 90 ? 'EXCELLENCE' : ($totalScore >= 80 ? 'GOOD' : 'ATTENTION');
+
+        $payload = [
+            'leader_score'        => $rating,
+            'total_score'         => $totalScore,
+            'evaluation_status'   => $status,
+            'submitted_by_leader' => $leader->worker_id,
+            'submitted_at'        => now(),
+        ];
 
         if (Schema::hasColumn('monthly_evaluations', 'criteria_scores')) {
-            $payload['criteria_scores'] = null;
+            $payload['criteria_scores'] = json_encode($criteria);
         }
 
         if ($existing) {
@@ -1952,4 +2023,5 @@ class FypController extends Controller
             ->route('login')
             ->with('success', 'Password reset successful. You can now log in.');
     }
+
 }

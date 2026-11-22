@@ -18,6 +18,7 @@ class User extends Authenticatable
     public $incrementing = false;
     protected $keyType = 'string';
     public $timestamps = false;
+    public $rememberTokenName = false;
 
     // 3. Kolum yang boleh diisi
     protected $fillable = [

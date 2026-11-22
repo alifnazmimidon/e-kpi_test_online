@@ -59,6 +59,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/hr/update-target', [FypController::class, 'updateTarget'])->name('hr.updateTarget');
         Route::post('/hr/update-formula', [FypController::class, 'updateFormula'])->name('hr.updateFormula');
         Route::post('/hr/update-thresholds', [FypController::class, 'updateThresholds'])->name('hr.updateThresholds');
+
+        //Bahagian AI untuk pekerja
+
+        Route::post('/hr/ai/refresh', [FypController::class, 'refreshAiInsights'])->name('hr.ai.refresh');
+        Route::post('/hr/ai/reminder-draft', [FypController::class, 'generateAiReminderDraft'])->name('hr.ai.reminder');
+        
     });
 
     // Khas untuk LEADER sahaja (Worker & HR akan dapat 403 jika cuba masuk)

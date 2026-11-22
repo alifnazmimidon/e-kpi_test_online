@@ -245,19 +245,64 @@
             </div>
 
             <form id="ratingForm" novalidate>
-                <div class="form-group">
-                    <label for="ratingInput">Leader Rating Score (Max <span id="maxRatingLabel">40.0</span>):</label>
-                    <div class="rating-input-row">
-                        <button type="button" class="stepper" id="ratingMinus" aria-label="Decrease by 0.5"><svg class="icon" aria-hidden="true"><use href="#i-minus"/></svg></button>
-                        <input type="number" id="ratingInput" step="0.1" min="0" max="40" placeholder="e.g. 35.5" inputmode="decimal" aria-describedby="ratingError ratingHint">
-                        <button type="button" class="stepper" id="ratingPlus" aria-label="Increase by 0.5"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></button>
+                <div class="criteria-grid">
+                    <div class="criteria-item">
+                        <div class="criteria-head">
+                            <label for="critQ1">1. Work Quality &amp; Output Accuracy</label>
+                        </div>
+                        <div class="criteria-controls">
+                            <input type="range" id="sliderQ1" min="0" max="10" step="0.5" value="0" aria-label="Work Quality slider">
+                            <div class="criteria-num-wrap">
+                                <input type="number" id="critQ1" data-slider="sliderQ1" min="0" max="10" step="0.5" placeholder="0.0" required>
+                                <span>/10</span>
+                            </div>
+                        </div>
                     </div>
-                    <span class="field-error" id="ratingError" role="alert" hidden></span>
-                    <span class="field-hint" id="ratingHint">This rating counts towards 40% of the employee's total quarterly KPI.</span>
-                    <button type="button" class="link-btn" id="clearRatingBtn" hidden>Clear rating (mark as pending)</button>
+
+                    <div class="criteria-item">
+                        <div class="criteria-head">
+                            <label for="critQ2">2. Problem Solving &amp; Technical Skill</label>
+                        </div>
+                        <div class="criteria-controls">
+                            <input type="range" id="sliderQ2" min="0" max="10" step="0.5" value="0" aria-label="Problem Solving slider">
+                            <div class="criteria-num-wrap">
+                                <input type="number" id="critQ2" data-slider="sliderQ2" min="0" max="10" step="0.5" placeholder="0.0" required>
+                                <span>/10</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="criteria-item">
+                        <div class="criteria-head">
+                            <label for="critQ3">3. Teamwork &amp; Communication</label>
+                        </div>
+                        <div class="criteria-controls">
+                            <input type="range" id="sliderQ3" min="0" max="10" step="0.5" value="0" aria-label="Teamwork slider">
+                            <div class="criteria-num-wrap">
+                                <input type="number" id="critQ3" data-slider="sliderQ3" min="0" max="10" step="0.5" placeholder="0.0" required>
+                                <span>/10</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="criteria-item">
+                        <div class="criteria-head">
+                            <label for="critQ4">4. Initiative &amp; Discipline</label>
+                        </div>
+                        <div class="criteria-controls">
+                            <input type="range" id="sliderQ4" min="0" max="10" step="0.5" value="0" aria-label="Initiative slider">
+                            <div class="criteria-num-wrap">
+                                <input type="number" id="critQ4" data-slider="sliderQ4" min="0" max="10" step="0.5" placeholder="0.0" required>
+                                <span>/10</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
+                <span class="field-error" id="ratingError" role="alert" hidden></span>
+
                 <div class="score-breakdown-box" aria-live="polite">
+                    <div class="breakdown-row"><span>Leader Rating (/40):</span> <strong id="modalLeaderTotalVal">0.0 / 40</strong></div>
                     <div class="breakdown-row"><span>KPI Score (/40):</span> <strong id="modalKpiVal">0.0</strong></div>
                     <div class="breakdown-row"><span>Attendance (/20):</span> <strong id="modalAttVal">0.0</strong></div>
                     <div class="breakdown-row"><span>Projected Status:</span> <strong id="modalStatus">-</strong></div>
@@ -319,9 +364,9 @@
 
     @php
         $leaderRoutes = [
-            'rating' => \Illuminate\Support\Facades\Route::has('leader.rating')
-                ? route('leader.rating')
-                : (\Illuminate\Support\Facades\Route::has('leader.kpi') ? route('leader.kpi') : url('/leader/kpi')),
+            'rating' => \Illuminate\Support\Facades\Route::has('leader.rating.save')
+                ? route('leader.rating.save')
+                : url('/leader/rating'),
             'reminder' => \Illuminate\Support\Facades\Route::has('leader.reminder')
                 ? route('leader.reminder')
                 : url('/leader/reminder'),
@@ -565,7 +610,12 @@
                     </td>
                     <td><span class="status-pill ${s.status.cls}">${icon(s.status.icon)}${s.status.text}</span></td>
                     <td>${eom}</td>
-                    <td><button type="button" class="btn-table-action ${pending ? 'primary' : ''}" data-edit="${esc(s.id)}" aria-label="${pending ? 'Input rating for' : 'Edit rating for'} ${esc(s.name)}">${icon(pending ? 'plus' : 'edit')}${pending ? 'RATE' : 'EDIT'}</button></td>
+                    <td>
+                        ${pending
+                            ? `<button type="button" class="btn-table-action primary" data-edit="${esc(s.id)}" aria-label="Input rating for ${esc(s.name)}">${icon('plus')}RATE</button>`
+                            : `<a href="/leader/input-rating?worker_id=${encodeURIComponent(s.id)}" class="btn-table-action" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:4px;" aria-label="Revise rating for ${esc(s.name)}">${icon('edit')}REVISE</a>`
+                        }
+                    </td>
                 </tr>`;
         }).join('');
         flashId = null; animateRows = false;
@@ -576,54 +626,79 @@
     }
 
     /* =====================================================
-       RATING DIALOG (SAVES DIRECTLY TO MYSQL)
+       RATING DIALOG (4 CRITERIA -> SAVES DIRECTLY TO MYSQL)
     ===================================================== */
+    function getCriteriaValues() {
+        const ids = ['critQ1', 'critQ2', 'critQ3', 'critQ4'];
+        const vals = {};
+        let sum = 0;
+        let allValid = true;
+
+        ids.forEach((id, idx) => {
+            const raw = $(id).value.trim();
+            const num = parseFloat(raw);
+            if (raw === '' || !Number.isFinite(num) || num < 0 || num > 10) {
+                allValid = false;
+            } else {
+                vals[`q${idx + 1}`] = round1(num);
+                sum += round1(num);
+            }
+        });
+
+        return { valid: allValid, eval: vals, totalLeader: round1(sum) };
+    }
+
     function previewTotals() {
         const s = staffList.find(x => String(x.id) === String(activeEditId));
-        if (!s) return { valid: false, v: NaN };
-        const raw = $('ratingInput').value.trim(), v = parseFloat(raw);
-        const valid = raw !== '' && Number.isFinite(v) && v >= 0 && v <= MAX.rating;
-        const total = valid ? round1(Number(s.kpi) + Number(s.attendance) + v) : null;
+        if (!s) return { valid: false };
+        const { valid, eval: evalObj, totalLeader } = getCriteriaValues();
+
+        $('modalLeaderTotalVal').textContent = valid ? `${totalLeader.toFixed(1)} / 40` : '0.0 / 40';
+        const total = valid ? round1(Number(s.kpi) + Number(s.attendance) + totalLeader) : null;
         $('modalProjectedTotal').textContent = total === null ? '-' : total.toFixed(1) + '%';
         const st = statusFor(total);
         $('modalStatus').textContent = valid ? st.text : '-';
         $('modalStatus').style.color = !valid ? '' : st.cls === 'attention' ? '#e11d48' : '#16a34a';
-        $('ratingSave').disabled = !valid || (s.rating !== null && v === Number(s.rating));
-        return { valid, v };
+        $('ratingSave').disabled = !valid;
+        return { valid, eval: evalObj, totalLeader };
     }
 
     function setRatingError(msg) {
-        const e = $('ratingError'), i = $('ratingInput');
-        e.hidden = !msg; e.innerHTML = msg ? icon('alert-circle') + esc(msg) : '';
-        i.setAttribute('aria-invalid', String(!!msg));
+        const e = $('ratingError');
+        e.hidden = !msg;
+        e.innerHTML = msg ? icon('alert-circle') + esc(msg) : '';
     }
 
     function openRatingModal(id) {
         const s = staffList.find(x => String(x.id) === String(id));
         if (!s) return;
+
+        // Jika staf sudah dinilai, paksa buka Dedicated Page untuk proses Revise
+        if (s.rating !== null) {
+            window.location.href = `/leader/input-rating?worker_id=${encodeURIComponent(s.id)}`;
+            return;
+        }
+
         activeEditId = s.id;
         $('modalStaffName').textContent = s.name.toUpperCase();
         $('modalStaffSub').textContent = `${seed.deptLabel || 'WebTech'} Department`;
         $('modalKpiVal').textContent = Number(s.kpi).toFixed(1);
         $('modalAttVal').textContent = Number(s.attendance).toFixed(1);
-        $('ratingInput').value = s.rating !== null ? s.rating : '';
-        $('clearRatingBtn').hidden = s.rating === null;
+
+        ['critQ1', 'critQ2', 'critQ3', 'critQ4'].forEach((id, idx) => {
+            $(id).value = '';
+            $(`sliderQ${idx + 1}`).value = 0;
+        });
+
         setRatingError('');
         previewTotals();
         $('ratingDialog').showModal();
-        $('ratingInput').focus(); $('ratingInput').select();
+        $('critQ1').focus();
     }
 
-    function stepRating(delta) {
-        const i = $('ratingInput'), cur = parseFloat(i.value);
-        i.value = round1(Math.min(MAX.rating, Math.max(0, (Number.isFinite(cur) ? cur : 0) + delta)));
-        setRatingError(''); previewTotals();
-    }
-
-    async function applyRating(id, value, { undoable = true } = {}) {
+    async function applyRating(id, evalPayload) {
         const s = staffList.find(x => String(x.id) === String(id));
         if (!s) return;
-        const prev = s.rating;
 
         try {
             const res = await fetch(ROUTES.rating, {
@@ -635,42 +710,37 @@
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': csrfToken
                 },
-                body: JSON.stringify({ worker_id: id, rating: value })
+                body: JSON.stringify({ worker_id: id, eval: evalPayload })
             });
 
-            if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || ('HTTP ' + res.status));
+            }
 
             if (data.payload && Array.isArray(data.payload.staffList)) {
                 staffList = data.payload.staffList;
-            } else {
-                s.rating = value;
             }
 
             flashId = id;
             renderStaffTable();
-            const msg = value === null ? `Rating cleared for ${s.name}.` : `Rating for ${s.name} saved to database.`;
-            toast(msg, 'success', {
-                duration: 5000,
-                action: undoable ? { label: 'Undo', onClick: () => applyRating(id, prev, { undoable: false }) } : null
-            });
+            toast(`Final rating for ${s.name} saved. Use Revise on KPI Management page for any future changes.`, 'success', { duration: 5000 });
         } catch (err) {
             console.error('[Save Rating Error]:', err);
-            toast('Failed to save rating to database. Please try again.', 'error');
+            toast(err.message || 'Failed to save rating to database.', 'error');
         }
     }
 
     function saveRating(e) {
         e.preventDefault();
-        const { valid, v } = previewTotals();
+        const { valid, eval: evalObj } = previewTotals();
         if (!valid) {
-            setRatingError(`Please enter a valid rating between 0 and ${MAX.rating}.`);
-            $('ratingInput').focus();
+            setRatingError('Please enter a valid score between 0 and 10 for all 4 criteria.');
             return;
         }
         const id = activeEditId;
         $('ratingDialog').close();
-        applyRating(id, round1(v));
+        applyRating(id, evalObj);
     }
 
     /* =====================================================
@@ -816,10 +886,27 @@
 
         const dlg = $('ratingDialog');
         $('ratingForm').addEventListener('submit', saveRating);
-        $('ratingInput').addEventListener('input', () => { setRatingError(''); previewTotals(); });
-        $('ratingMinus').addEventListener('click', () => stepRating(-0.5));
-        $('ratingPlus').addEventListener('click', () => stepRating(0.5));
-        $('clearRatingBtn').addEventListener('click', () => { const id = activeEditId; dlg.close(); applyRating(id, null); });
+
+        ['Q1', 'Q2', 'Q3', 'Q4'].forEach(code => {
+            const numEl = $(`crit${code}`);
+            const sldEl = $(`slider${code}`);
+
+            sldEl.addEventListener('input', () => {
+                numEl.value = sldEl.value;
+                setRatingError('');
+                previewTotals();
+            });
+
+            numEl.addEventListener('input', () => {
+                const v = parseFloat(numEl.value);
+                if (Number.isFinite(v)) {
+                    sldEl.value = Math.min(10, Math.max(0, v));
+                }
+                setRatingError('');
+                previewTotals();
+            });
+        });
+
         $('ratingCancel').addEventListener('click', () => dlg.close());
         $('ratingCloseX').addEventListener('click', () => dlg.close());
         dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });

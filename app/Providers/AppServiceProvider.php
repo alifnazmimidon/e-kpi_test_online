@@ -29,7 +29,9 @@ class AppServiceProvider extends ServiceProvider
                 $row = null;
 
                 try {
-                    if (Schema::hasTable('eom_thresholds')) {
+                    if (Schema::hasTable('kpi_settings')) {
+                        $row = DB::table('kpi_settings')->first();
+                    } elseif (Schema::hasTable('eom_thresholds')) {
                         $row = DB::table('eom_thresholds')->first();
                     }
                 } catch (\Throwable $e) {

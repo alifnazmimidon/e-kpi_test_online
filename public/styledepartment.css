@@ -514,6 +514,21 @@ th[aria-sort="ascending"] .sort-btn .icon, th[aria-sort="descending"] .sort-btn 
     .btn-email-reminder { width: 100%; justify-content: center; }
 }
 
+
+/* PENAMBAHAN */
+
+.criteria-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .criteria-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 9px 12px; }
+    .criteria-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.83rem; font-weight: 600; color: #1e293b; }
+    .criteria-controls { display: flex; align-items: center; gap: 10px; }
+    .criteria-controls input[type="range"] { flex: 1; accent-color: #e11d48; cursor: pointer; height: 5px; }
+    .criteria-num-wrap { display: flex; align-items: center; gap: 4px; background: #fff; border: 1px solid #cbd5e1; border-radius: 7px; padding: 2px 7px; }
+    .criteria-num-wrap input[type="number"] { width: 46px; border: none; outline: none; font-weight: 700; font-size: 0.85rem; text-align: right; color: #0f172a; background: transparent; }
+    .criteria-num-wrap span { font-size: 0.75rem; color: #64748b; font-weight: 600; }
+
+#ratingDialog { max-height: 92vh; }
+    #ratingDialog .modal-body { max-height: calc(92vh - 135px); overflow-y: auto; }
+
 /* =====================================================
    REDUCED MOTION - final states render immediately
 ===================================================== */

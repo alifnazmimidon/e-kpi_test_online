@@ -44,6 +44,10 @@
         <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
         <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
         <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></symbol>
+        <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></symbol>
+        <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/></symbol>
+        <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3M8 11h6"/></symbol>
+        <symbol id="i-rotate-cw" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></symbol>
     </svg>
 
     @php
@@ -140,6 +144,12 @@
                     </label>
                     <button type="button" class="remove-photo-btn" id="removePhotoBtn" aria-label="Remove profile picture" title="Remove picture" {{ $photoUrl ? '' : 'hidden' }}>
                         <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+                    </button>
+                    <button type="button" class="remove-photo-btn" id="removePhotoBtn" aria-label="Remove profile picture" title="Remove picture" {{ $photoUrl ? '' : 'hidden' }}>
+                        <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+                    </button>
+                    <button type="button" class="crop-photo-btn" id="cropPhotoBtn" aria-label="Adjust image crop" title="Adjust crop" hidden>
+                        <svg class="icon" aria-hidden="true"><use href="#i-crop"/></svg>
                     </button>
                 </div>
 
@@ -255,6 +265,50 @@
                 <button type="submit" value="confirm" class="btn-primary" id="confirmOk">Confirm</button>
             </div>
         </form>
+    </dialog>
+
+    <!-- CROP IMAGE DIALOG -->
+    <dialog class="confirm-dialog crop-dialog" id="cropDialog" aria-labelledby="cropTitle">
+        <div class="crop-header">
+            <h3><svg class="icon" aria-hidden="true"><use href="#i-crop"/></svg><span id="cropTitle">Crop Profile Picture</span></h3>
+            <button type="button" class="crop-close-btn" id="cropCloseBtn" aria-label="Close crop dialog">
+                <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+            </button>
+        </div>
+
+        <div class="crop-body">
+            <p class="crop-instruction">Drag the image to reposition and use the slider to zoom.</p>
+
+            <div class="crop-stage" id="cropStage">
+                <canvas id="cropCanvas"></canvas>
+                <div class="crop-circle-mask" aria-hidden="true"></div>
+            </div>
+
+            <div class="crop-controls">
+                <button type="button" class="crop-tool-btn" id="cropZoomOut" aria-label="Zoom out" title="Zoom out">
+                    <svg class="icon" aria-hidden="true"><use href="#i-zoom-out"/></svg>
+                </button>
+                <input type="range" id="cropZoomRange" class="crop-slider" min="1" max="3" step="0.02" value="1" aria-label="Zoom level">
+                <button type="button" class="crop-tool-btn" id="cropZoomIn" aria-label="Zoom in" title="Zoom in">
+                    <svg class="icon" aria-hidden="true"><use href="#i-zoom-in"/></svg>
+                </button>
+                <span class="crop-zoom-val" id="cropZoomLabel">100%</span>
+            </div>
+
+            <div class="crop-secondary-actions">
+                <button type="button" class="crop-pill-btn" id="cropRotateBtn">
+                    <svg class="icon" aria-hidden="true"><use href="#i-rotate-cw"/></svg>Rotate 90°
+                </button>
+                <button type="button" class="crop-pill-btn" id="cropResetBtn">Reset Position</button>
+            </div>
+        </div>
+
+        <div class="confirm-actions">
+            <button type="button" class="btn-secondary" id="cropCancelBtn">Cancel</button>
+            <button type="button" class="btn-primary" id="cropApplyBtn">
+                <svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Apply Crop
+            </button>
+        </div>
     </dialog>
 
     <div class="toast-region" id="toastRegion" aria-live="polite"></div>
@@ -420,19 +474,238 @@
         });
     }
 
+    let lastRawImageUrl = '';
+    const CROP_VIEW_SIZE = 260;
+    const CROP_EXPORT_SIZE = 256;
+
+    const cropState = {
+        img: null,
+        baseScale: 1,
+        zoom: 1,
+        rotation: 0,
+        offsetX: 0,
+        offsetY: 0,
+        dragging: false,
+        startX: 0,
+        startY: 0
+    };
+
+    function loadImageElement(src) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error('decode'));
+            img.src = src;
+        });
+    }
+
+    function getEffectiveDimensions() {
+        const swapped = (cropState.rotation % 180) !== 0;
+        return {
+            w: swapped ? cropState.img.naturalHeight : cropState.img.naturalWidth,
+            h: swapped ? cropState.img.naturalWidth : cropState.img.naturalHeight
+        };
+    }
+
+    function clampCropOffsets() {
+        if (!cropState.img) return;
+        const { w, h } = getEffectiveDimensions();
+        cropState.baseScale = Math.max(CROP_VIEW_SIZE / w, CROP_VIEW_SIZE / h);
+        const scale = cropState.baseScale * cropState.zoom;
+        const maxX = Math.max(0, (w * scale - CROP_VIEW_SIZE) / 2);
+        const maxY = Math.max(0, (h * scale - CROP_VIEW_SIZE) / 2);
+        cropState.offsetX = Math.min(maxX, Math.max(-maxX, cropState.offsetX));
+        cropState.offsetY = Math.min(maxY, Math.max(-maxY, cropState.offsetY));
+    }
+
+    function drawCropCanvas() {
+        const canvas = $('cropCanvas');
+        if (!canvas || !cropState.img) return;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = CROP_VIEW_SIZE * dpr;
+        canvas.height = CROP_VIEW_SIZE * dpr;
+
+        const ctx = canvas.getContext('2d');
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, CROP_VIEW_SIZE, CROP_VIEW_SIZE);
+
+        clampCropOffsets();
+        const scale = cropState.baseScale * cropState.zoom;
+
+        ctx.translate(CROP_VIEW_SIZE / 2 + cropState.offsetX, CROP_VIEW_SIZE / 2 + cropState.offsetY);
+        ctx.rotate((cropState.rotation * Math.PI) / 180);
+        ctx.drawImage(
+            cropState.img,
+            (-cropState.img.naturalWidth * scale) / 2,
+            (-cropState.img.naturalHeight * scale) / 2,
+            cropState.img.naturalWidth * scale,
+            cropState.img.naturalHeight * scale
+        );
+        ctx.restore();
+
+        $('cropZoomRange').value = cropState.zoom.toFixed(2);
+        $('cropZoomLabel').textContent = Math.round(cropState.zoom * 100) + '%';
+    }
+
+    function exportCroppedDataUrl() {
+        const out = document.createElement('canvas');
+        out.width = CROP_EXPORT_SIZE;
+        out.height = CROP_EXPORT_SIZE;
+        const ctx = out.getContext('2d');
+
+        // Latar putih untuk PNG lutsinar sebelum ditukar kepada JPEG
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, CROP_EXPORT_SIZE, CROP_EXPORT_SIZE);
+
+        clampCropOffsets();
+        const ratio = CROP_EXPORT_SIZE / CROP_VIEW_SIZE;
+        const scale = cropState.baseScale * cropState.zoom * ratio;
+
+        ctx.save();
+        ctx.translate(
+            CROP_EXPORT_SIZE / 2 + cropState.offsetX * ratio,
+            CROP_EXPORT_SIZE / 2 + cropState.offsetY * ratio
+        );
+        ctx.rotate((cropState.rotation * Math.PI) / 180);
+        ctx.drawImage(
+            cropState.img,
+            (-cropState.img.naturalWidth * scale) / 2,
+            (-cropState.img.naturalHeight * scale) / 2,
+            cropState.img.naturalWidth * scale,
+            cropState.img.naturalHeight * scale
+        );
+        ctx.restore();
+
+        return out.toDataURL('image/jpeg', 0.88);
+    }
+
+    async function openCropModal(imageSrc) {
+        const dlg = $('cropDialog');
+        const img = await loadImageElement(imageSrc);
+        cropState.img = img;
+        cropState.zoom = 1;
+        cropState.rotation = 0;
+        cropState.offsetX = 0;
+        cropState.offsetY = 0;
+        cropState.dragging = false;
+
+        if (typeof dlg.showModal === 'function') {
+            if (!dlg.open) dlg.showModal();
+        } else {
+            dlg.setAttribute('open', '');
+        }
+        drawCropCanvas();
+    }
+
+    function closeCropModal() {
+        const dlg = $('cropDialog');
+        if (typeof dlg.close === 'function' && dlg.open) dlg.close();
+        else dlg.removeAttribute('open');
+    }
+
+    function initCropperControls() {
+        const stage = $('cropStage');
+        const zoomRange = $('cropZoomRange');
+
+        const setZoom = val => {
+            cropState.zoom = Math.min(3, Math.max(1, Number(val) || 1));
+            drawCropCanvas();
+        };
+
+        zoomRange.addEventListener('input', e => setZoom(e.target.value));
+        $('cropZoomIn').addEventListener('click', () => setZoom(cropState.zoom + 0.15));
+        $('cropZoomOut').addEventListener('click', () => setZoom(cropState.zoom - 0.15));
+
+        stage.addEventListener('wheel', e => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.12 : -0.12;
+            setZoom(cropState.zoom + delta);
+        }, { passive: false });
+
+        stage.addEventListener('pointerdown', e => {
+            cropState.dragging = true;
+            cropState.startX = e.clientX - cropState.offsetX;
+            cropState.startY = e.clientY - cropState.offsetY;
+            stage.setPointerCapture(e.pointerId);
+            stage.classList.add('dragging');
+        });
+
+        stage.addEventListener('pointermove', e => {
+            if (!cropState.dragging) return;
+            cropState.offsetX = e.clientX - cropState.startX;
+            cropState.offsetY = e.clientY - cropState.startY;
+            drawCropCanvas();
+        });
+
+        const stopDrag = e => {
+            if (!cropState.dragging) return;
+            cropState.dragging = false;
+            stage.classList.remove('dragging');
+            if (e.pointerId !== undefined && stage.hasPointerCapture(e.pointerId)) {
+                stage.releasePointerCapture(e.pointerId);
+            }
+        };
+        stage.addEventListener('pointerup', stopDrag);
+        stage.addEventListener('pointercancel', stopDrag);
+
+        $('cropRotateBtn').addEventListener('click', () => {
+            cropState.rotation = (cropState.rotation + 90) % 360;
+            cropState.offsetX = 0;
+            cropState.offsetY = 0;
+            drawCropCanvas();
+        });
+
+        $('cropResetBtn').addEventListener('click', () => {
+            cropState.zoom = 1;
+            cropState.rotation = 0;
+            cropState.offsetX = 0;
+            cropState.offsetY = 0;
+            drawCropCanvas();
+        });
+
+        $('cropCancelBtn').addEventListener('click', closeCropModal);
+        $('cropCloseBtn').addEventListener('click', closeCropModal);
+
+        $('cropApplyBtn').addEventListener('click', () => {
+            if (!cropState.img) return;
+            pendingPic = exportCroppedDataUrl();
+            applyAvatar(pendingPic);
+            $('cropPhotoBtn').hidden = !lastRawImageUrl;
+            syncUI();
+            closeCropModal();
+        });
+    }
+
     async function handleImageFile(file) {
         const err = $('avatarError');
         err.hidden = true;
         if (!file) return;
-        if (!ALLOWED.includes(file.type)) { err.hidden = false; err.innerHTML = icon('alert-circle') + 'Please choose a PNG, JPG or WEBP image.'; return; }
-        if (file.size > 5 * 1024 * 1024) { err.hidden = false; err.innerHTML = icon('alert-circle') + 'Image is larger than 5 MB. Please choose a smaller file.'; return; }
+        if (!ALLOWED.includes(file.type)) {
+            err.hidden = false;
+            err.innerHTML = icon('alert-circle') + 'Please choose a PNG, JPG or WEBP image.';
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            err.hidden = false;
+            err.innerHTML = icon('alert-circle') + 'Image is larger than 5 MB. Please choose a smaller file.';
+            return;
+        }
+
         $('avatarBusy').hidden = false;
         try {
-            pendingPic = await processImage(file);
-            applyAvatar(pendingPic);
-            syncUI();
+            const dataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('read'));
+                reader.readAsDataURL(file);
+            });
+            lastRawImageUrl = dataUrl;
+            await openCropModal(dataUrl);
         } catch {
-            err.hidden = false; err.innerHTML = icon('alert-circle') + 'That image could not be read. Please try another file.';
+            err.hidden = false;
+            err.innerHTML = icon('alert-circle') + 'That image could not be read. Please try another file.';
         } finally {
             $('avatarBusy').hidden = true;
             $('imageUpload').value = '';
@@ -441,8 +714,18 @@
     function previewProfileImage(event) { handleImageFile(event.target.files[0]); }
 
     function initAvatar() {
+        initCropperControls();
         $('imageUpload').addEventListener('change', previewProfileImage);
-        $('removePhotoBtn').addEventListener('click', () => { pendingPic = ''; applyAvatar(''); syncUI(); });
+        $('removePhotoBtn').addEventListener('click', () => {
+            pendingPic = '';
+            lastRawImageUrl = '';
+            $('cropPhotoBtn').hidden = true;
+            applyAvatar('');
+            syncUI();
+        });
+        $('cropPhotoBtn').addEventListener('click', () => {
+            if (lastRawImageUrl) openCropModal(lastRawImageUrl);
+        });
 
         const drop = $('avatarDrop');
         ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('dragover'); }));

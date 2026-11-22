@@ -161,16 +161,32 @@
 
                 <div class="profile-dropdown" id="profileDropdown">
                     <div class="profile-dropdown-header">
-                        <span class="user-name" id="dropdownUserName">{{ $displayName }}</span>
-                        <span class="user-role" id="dropdownUserRole">{{ $latestPosition }}</span>
+                        <span class="user-name" id="dropdownUserName">{{ $navUser->full_name ?? $navUser->name ?? 'User' }}</span>
+                        <span class="user-role" id="dropdownUserRole">{{ $latestPosition ?? ($navUser->role ?? 'Worker') }}</span>
                     </div>
+
+                    @php
+                        $userRole = strtoupper(trim(auth()->user()->role ?? ''));
+                        $isHr = $userRole === 'HR';
+                        $isLeader = in_array($userRole, ['TEAM LEADER', 'TEAM_LEADER', 'LEADER'], true);
+                    @endphp
+
                     <ul class="profile-dropdown-menu">
-                        <li><a href="{{ $editProfileUrl }}">Edit Profile</a></li>
-                        <li><a href="{{ $dashboardUrl }}">Dashboard</a></li>
+                        <li><a href="{{ route('profile.edit') }}">Edit Profile</a></li>
+
+                        {{-- Menu Dashboard hanya dipaparkan untuk HR dan Department Leader sahaja --}}
+                        @if($isHr || $isLeader)
+                            <li>
+                                <a href="{{ $isHr ? (Route::has('hr.dashboard') ? route('hr.dashboard') : url('/hr')) : (Route::has('leader.dashboard') ? route('leader.dashboard') : url('/leader')) }}">
+                                    Dashboard
+                                </a>
+                            </li>
+                        @endif
+
                         <li class="divider"></li>
                         <li>
                             <a href="{{ route('logout') }}" class="logout-link"
-                               onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Log Out</a>
+                            onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Log Out</a>
                             <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                                 @csrf
                             </form>

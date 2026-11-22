@@ -4,45 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EKPI - Login</title>
-    <link rel="stylesheet" href="{{ asset('style.css') }}?v=2">
+    <link rel="stylesheet" href="{{ asset('style.css') }}?v=3">
 </head>
 <body>
-    <section class="login-page" id="loginPage">
+    <main class="login-page" id="loginPage">
 
-        <!-- LEFT -->
+        <!-- LEFT: LOGIN FORM -->
         <div class="login-left">
             <div class="login-box">
-                <div class="login-logo">
+                <div class="login-logo reveal" style="--i: 0">
                     <img
                         src="{{ asset('assets/ILMgroups-logo-4.png') }}"
                         alt="Infinite Loop Media Logo"
                     >
                 </div>
 
-                <h1 class="welcome-title">WELCOME BACK</h1>
-                <p class="system-name">E-KPI SYSTEM</p>
-               <!-- PAPARKAN MESEJ RALAT JIKA LOGIN GAGAL -->
+                <h1 class="welcome-title reveal" style="--i: 1">WELCOME BACK</h1>
+                <p class="system-name reveal" style="--i: 2">E-KPI SYSTEM</p>
+
+                <!-- PAPARKAN MESEJ RALAT JIKA LOGIN GAGAL -->
                 @if (session('error'))
-                    <p style="color: #E31B23 !important; font-weight: 600; margin-bottom: 12px; text-align: center;">
+                    <div class="login-alert error reveal" style="--i: 2" role="alert">
                         {{ session('error') }}
-                    </p>
+                    </div>
                 @endif
 
                 @if ($errors->any())
-                    <p style="color: #E31B23 !important; font-weight: 600; margin-bottom: 12px; text-align: center;">
+                    <div class="login-alert error reveal" style="--i: 2" role="alert">
                         {{ $errors->first() }}
-                    </p>
+                    </div>
                 @endif
 
                 <!-- PAPARKAN MESEJ BERJAYA SELEPAS RESET PASSWORD -->
-                @if(session('success'))
-                    <div style="color: #16a34a; margin-bottom: 15px; font-weight: bold; text-align: center;">
+                @if (session('success'))
+                    <div class="login-alert success reveal" style="--i: 2" role="status">
                         {{ session('success') }}
                     </div>
                 @endif
 
                 <!-- FORM LOGIN LARAVEL -->
-                <form action="{{ route('login.post') }}" method="POST">
+                <form action="{{ route('login.post') }}" method="POST" id="loginForm" class="reveal" style="--i: 3">
                     @csrf
 
                     <!-- WORKER ID -->
@@ -55,6 +56,7 @@
                                 name="worker_id"
                                 value="{{ old('worker_id') }}"
                                 placeholder="e.g., ILM3003"
+                                autocomplete="username"
                                 required
                             >
                         </div>
@@ -68,7 +70,8 @@
                                 type="password"
                                 id="password"
                                 name="password"
-                                placeholder="••••••••"
+                                placeholder="Password"
+                                autocomplete="current-password"
                                 required
                             >
                             <button
@@ -76,24 +79,37 @@
                                 type="button"
                                 onclick="togglePassword()"
                                 id="eyeButton"
-                                aria-label="Toggle password visibility"
+                                aria-label="Show password"
+                                aria-pressed="false"
+                                title="Show password"
                             >
-                                <!-- SVG BULAT BERISI (DEFAULT) -->
-                                <svg id="eyeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#18181B" stroke-width="2">
-                                    <circle cx="12" cy="12" r="9"/>
-                                    <circle cx="12" cy="12" r="4" fill="#18181B"/>
+                                <!-- ICON: SHOW PASSWORD (MATA TERBUKA) -->
+                                <svg class="eye-svg eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+
+                                <!-- ICON: HIDE PASSWORD (MATA BERPALANG) -->
+                                <svg class="eye-svg eye-closed" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/>
+                                    <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/>
+                                    <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/>
+                                    <path class="eye-slash" d="m2 2 20 20"/>
                                 </svg>
                             </button>
                         </div>
                     </div>
 
                     <!-- SUBMIT BUTTON -->
-                    <button type="submit" class="login-button">
-                        LOGIN
+                    <button type="submit" class="login-button" id="loginSubmitBtn">
+                        <span class="btn-text">LOGIN</span>
+                        <span class="btn-loader" aria-hidden="true"></span>
                     </button>
                 </form>
 
-                <p class="forgot-password">
+                <p class="forgot-password reveal" style="--i: 4">
                     <a href="{{ route('password.request') }}" class="forgot-link">FORGOT PASSWORD ?</a>
                 </p>
             </div>
@@ -109,21 +125,27 @@
             <div class="image-overlay"></div>
         </div>
 
-    </section>
+    </main>
 
     <script>
         function togglePassword() {
-            const password = document.getElementById("password");
-            const eyeIcon = document.getElementById("eyeIcon");
+            const passwordInput = document.getElementById("password");
+            const eyeButton = document.getElementById("eyeButton");
+            const isHidden = passwordInput.type === "password";
 
-            if (password.type === "password") {
-                password.type = "text";
-                eyeIcon.innerHTML = `<circle cx="12" cy="12" r="9"/>`;
-            } else {
-                password.type = "password";
-                eyeIcon.innerHTML = `<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="#18181B"/>`;
-            }
+            passwordInput.type = isHidden ? "text" : "password";
+            eyeButton.classList.toggle("is-visible", isHidden);
+            eyeButton.setAttribute("aria-pressed", String(isHidden));
+            eyeButton.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+            eyeButton.setAttribute("title", isHidden ? "Hide password" : "Show password");
         }
+
+        // Kesan loading pada butang semasa borang dihantar
+        document.getElementById("loginForm").addEventListener("submit", function () {
+            const btn = document.getElementById("loginSubmitBtn");
+            btn.classList.add("is-loading");
+            btn.disabled = true;
+        });
     </script>
 </body>
 </html>

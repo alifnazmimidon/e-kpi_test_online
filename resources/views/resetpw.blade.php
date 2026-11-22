@@ -30,8 +30,21 @@
                 </p>
 
                 <p class="forgot-description reveal" style="--i: 2">
-                    Create a new password for <strong>{{ $user->full_name }}</strong> ({{ $user->worker_id }}).
+                    Enter the 6-digit OTP sent to <strong>{{ $maskedEmail }}</strong> and set a new password for <strong>{{ $user->full_name }}</strong>.
                 </p>
+
+                <!-- SUCCESS / INFO MESSAGE -->
+                @if (session('success'))
+                    <div class="forgot-alert success reveal" style="--i: 2" role="status" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;">
+                        {{ session('success') }}
+                    </div>
+                @endif
+
+                @if (session('error'))
+                    <div class="forgot-alert error reveal" style="--i: 2" role="alert">
+                        {{ session('error') }}
+                    </div>
+                @endif
 
                 <!-- SERVER ERROR MESSAGE -->
                 @if ($errors->any())
@@ -46,6 +59,29 @@
                 <!-- RESET FORM -->
                 <form id="resetForm" method="POST" action="{{ route('password.update') }}" class="reveal" style="--i: 3">
                     @csrf
+
+                    <!-- 6-DIGIT OTP -->
+                    <div class="forgot-form-group">
+                        <label for="otpCode">
+                            6-Digit OTP Code :
+                        </label>
+
+                        <div class="input-wrapper">
+                            <input
+                                type="text"
+                                id="otpCode"
+                                name="otp"
+                                maxlength="6"
+                                inputmode="numeric"
+                                pattern="[0-9]{6}"
+                                placeholder="e.g. 123456"
+                                autocomplete="one-time-code"
+                                style="letter-spacing: 4px; font-weight: 600;"
+                                required
+                                autofocus
+                            >
+                        </div>
+                    </div>
 
                     <!-- NEW PASSWORD -->
                     <div class="forgot-form-group">
@@ -131,7 +167,7 @@
 
                     <!-- PASSWORD REQUIREMENT -->
                     <p class="password-hint" id="passwordHint">
-                        Use at least 8 characters.
+                        Use at least 8 characters. OTP expires in 5 minutes.
                     </p>
 
                     <!-- BUTTON -->
@@ -140,6 +176,14 @@
                         <span class="btn-loader" aria-hidden="true"></span>
                     </button>
 
+                </form>
+
+                <!-- RESEND OTP -->
+                <form method="POST" action="{{ route('password.resend') }}" class="reveal" style="--i: 4; margin-top: 12px; text-align: center;">
+                    @csrf
+                    <button type="submit" style="background: none; border: none; color: #b91c1c; font-weight: 600; font-size: 0.875rem; cursor: pointer; text-decoration: underline;">
+                        Didn't receive the code? Resend OTP
+                    </button>
                 </form>
 
                 <!-- BACK TO LOGIN -->
@@ -177,10 +221,16 @@
         }
 
         const resetForm = document.getElementById("resetForm");
+        const otpInput = document.getElementById("otpCode");
         const newPasswordInput = document.getElementById("newPassword");
         const passwordHint = document.getElementById("passwordHint");
         const resetMessage = document.getElementById("resetMessage");
         const resetSubmitBtn = document.getElementById("resetSubmitBtn");
+
+        // Benarkan nombor sahaja pada ruangan OTP
+        otpInput.addEventListener("input", function () {
+            this.value = this.value.replace(/\D/g, "").slice(0, 6);
+        });
 
         // Penunjuk visual apabila panjang kata laluan >= 8 aksara
         newPasswordInput.addEventListener("input", function () {
@@ -190,17 +240,23 @@
         function showValidationError(msg) {
             resetMessage.textContent = msg;
             resetMessage.hidden = false;
-            // Ulang animasi shake jika ralat berlaku lagi
             resetMessage.style.animation = "none";
             void resetMessage.offsetWidth;
             resetMessage.style.animation = "";
         }
 
         resetForm.addEventListener("submit", function (event) {
+            const otpVal = otpInput.value.trim();
             const newPassword = newPasswordInput.value;
             const confirmPassword = document.getElementById("confirmPassword").value;
 
-            // Check password length
+            if (!/^\d{6}$/.test(otpVal)) {
+                event.preventDefault();
+                showValidationError("Please enter the 6-digit OTP code from your email.");
+                otpInput.focus();
+                return;
+            }
+
             if (newPassword.length < 8) {
                 event.preventDefault();
                 showValidationError("Password must contain at least 8 characters.");
@@ -208,7 +264,6 @@
                 return;
             }
 
-            // Check password confirmation
             if (newPassword !== confirmPassword) {
                 event.preventDefault();
                 showValidationError("Passwords do not match.");

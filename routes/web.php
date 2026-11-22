@@ -23,18 +23,21 @@ Route::get('/', function () {
 });
 
 // 2. Proses Hantar Form Login & Logout
-Route::post('/login', [FypController::class, 'login'])
+    Route::post('/login', [FypController::class, 'login'])
     ->middleware('throttle:5,1')
     ->name('login.post');
-Route::post('/logout', [FypController::class, 'logout'])->name('logout');
+    Route::post('/logout', [FypController::class, 'logout'])->name('logout');
 
 // 2B. Forgot & Reset Password (Sebelum Middleware Auth)
-Route::get('/forgot-password', [FypController::class, 'showForgotPassword'])->name('password.request');
-Route::post('/forgot-password', [FypController::class, 'verifyForgotPassword'])
+    Route::get('/forgot-password', [FypController::class, 'showForgotPassword'])->name('password.request');
+    Route::post('/forgot-password', [FypController::class, 'verifyForgotPassword'])
     ->middleware('throttle:5,1')
     ->name('password.verify');
-Route::get('/reset-password', [FypController::class, 'showResetPassword'])->name('password.reset');
-Route::post('/reset-password', [FypController::class, 'updateResetPassword'])
+    Route::post('/forgot-password/resend', [FypController::class, 'resendForgotOtp'])
+    ->middleware('throttle:3,1')
+    ->name('password.resend');
+    Route::get('/reset-password', [FypController::class, 'showResetPassword'])->name('password.reset');
+    Route::post('/reset-password', [FypController::class, 'updateResetPassword'])
     ->middleware('throttle:5,1')
     ->name('password.update');
 

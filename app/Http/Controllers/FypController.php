@@ -2439,9 +2439,36 @@ class FypController extends Controller
         ]);
     }
 
+   // =========================================================================
+    // FORGOT PASSWORD & RESET PASSWORD (EMAIL + 6-DIGIT OTP)
     // =========================================================================
-    // FORGOT PASSWORD & RESET PASSWORD
-    // =========================================================================
+    private function maskEmail(string $email): string
+    {
+        if (!str_contains($email, '@')) {
+            return $email;
+        }
+
+        [$name, $domain] = explode('@', $email, 2);
+        $visible = substr($name, 0, min(2, strlen($name)));
+
+        return $visible . str_repeat('*', max(3, strlen($name) - 2)) . '@' . $domain;
+    }
+
+    private function sendOtpEmail(User $user, string $otp): void
+    {
+        $body = "Hello {$user->full_name},\n\n"
+              . "Your One-Time Password (OTP) to reset your E-KPI System password is:\n\n"
+              . "OTP CODE: {$otp}\n\n"
+              . "This code is valid for 5 minutes. If you did not request a password reset, please ignore this email.\n\n"
+              . "Regards,\n"
+              . "Infinite Loop Media - E-KPI System";
+
+        \Illuminate\Support\Facades\Mail::raw($body, function ($message) use ($user) {
+            $message->to($user->email)
+                    ->subject('E-KPI System - Password Reset OTP Code');
+        });
+    }
+
     public function showForgotPassword()
     {
         return view('forgotpw');
@@ -2450,72 +2477,155 @@ class FypController extends Controller
     public function verifyForgotPassword(Request $request)
     {
         $request->validate([
-            'worker_id' => 'required|string',
+            'email' => 'required|email',
         ]);
 
-        $workerId = trim($request->input('worker_id'));
-        $user = User::where('worker_id', $workerId)->first();
+        $email = strtolower(trim($request->input('email')));
+        $user  = User::whereRaw('LOWER(TRIM(email)) = ?', [$email])->first();
 
         if (!$user) {
             return back()
-                ->with('error', 'Worker ID not found in the system!')
+                ->with('error', 'Email address not found in the system!')
                 ->withInput();
         }
 
-        $request->session()->put('reset_worker_id', $user->worker_id);
+        $otp = (string) random_int(100000, 999999);
 
-        return redirect()->route('password.reset');
-    }
+        try {
+            $this->sendOtpEmail($user, $otp);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('OTP Mail Error: ' . $e->getMessage());
 
-    public function showResetPassword(Request $request)
-    {
-        $workerId = $request->session()->get('reset_worker_id');
-
-        if (!$workerId) {
-            return redirect()
-                ->route('password.request')
-                ->with('error', 'Please verify your Worker ID first.');
+            return back()
+                ->with('error', 'Unable to send OTP email right now. Please check mail settings or try again.')
+                ->withInput();
         }
 
-        $user = User::where('worker_id', $workerId)->first();
+        $request->session()->put('password_reset_otp', [
+            'worker_id'  => $user->worker_id,
+            'email'      => $user->email,
+            'otp_hash'   => Hash::make($otp),
+            'expires_at' => now()->addMinutes(5)->timestamp,
+            'attempts'   => 0,
+        ]);
+
+        return redirect()
+            ->route('password.reset')
+            ->with('success', 'A 6-digit OTP code has been sent to ' . $this->maskEmail($user->email) . '.');
+    }
+
+    public function resendForgotOtp(Request $request)
+    {
+        $otpData = $request->session()->get('password_reset_otp');
+
+        if (!$otpData || empty($otpData['worker_id'])) {
+            return redirect()
+                ->route('password.request')
+                ->with('error', 'Session expired. Please enter your email again.');
+        }
+
+        $user = User::where('worker_id', $otpData['worker_id'])->first();
 
         if (!$user) {
-            $request->session()->forget('reset_worker_id');
+            $request->session()->forget('password_reset_otp');
             return redirect()
                 ->route('password.request')
                 ->with('error', 'Account not found.');
         }
 
-        return view('resetpw', compact('user'));
+        $otp = (string) random_int(100000, 999999);
+
+        try {
+            $this->sendOtpEmail($user, $otp);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('OTP Resend Error: ' . $e->getMessage());
+
+            return back()->with('error', 'Failed to resend OTP email. Please try again.');
+        }
+
+        $request->session()->put('password_reset_otp', [
+            'worker_id'  => $user->worker_id,
+            'email'      => $user->email,
+            'otp_hash'   => Hash::make($otp),
+            'expires_at' => now()->addMinutes(5)->timestamp,
+            'attempts'   => 0,
+        ]);
+
+        return back()->with('success', 'A new 6-digit OTP code has been sent to ' . $this->maskEmail($user->email) . '.');
+    }
+
+    public function showResetPassword(Request $request)
+    {
+        $otpData = $request->session()->get('password_reset_otp');
+
+        if (!$otpData || empty($otpData['worker_id'])) {
+            return redirect()
+                ->route('password.request')
+                ->with('error', 'Please enter your email to request an OTP first.');
+        }
+
+        $user = User::where('worker_id', $otpData['worker_id'])->first();
+
+        if (!$user) {
+            $request->session()->forget('password_reset_otp');
+            return redirect()
+                ->route('password.request')
+                ->with('error', 'Account not found.');
+        }
+
+        $maskedEmail = $this->maskEmail($user->email);
+
+        return view('resetpw', compact('user', 'maskedEmail'));
     }
 
     public function updateResetPassword(Request $request)
     {
-        $workerId = $request->session()->get('reset_worker_id');
+        $otpData = $request->session()->get('password_reset_otp');
 
-        if (!$workerId) {
+        if (!$otpData || empty($otpData['worker_id'])) {
             return redirect()
                 ->route('password.request')
-                ->with('error', 'Session expired. Please verify your Worker ID again.');
+                ->with('error', 'Session expired. Please verify your email again.');
         }
 
         $request->validate([
+            'otp'              => 'required|digits:6',
             'new_password'     => 'required|string|min:8',
             'confirm_password' => 'required|same:new_password',
         ], [
+            'otp.required'          => 'Please enter the 6-digit OTP sent to your email.',
+            'otp.digits'            => 'OTP code must be exactly 6 digits.',
             'new_password.min'      => 'Password must contain at least 8 characters.',
             'confirm_password.same' => 'Passwords do not match.',
         ]);
 
-        User::where('worker_id', $workerId)->update([
+        if (now()->timestamp > ($otpData['expires_at'] ?? 0)) {
+            return back()->withErrors(['otp' => 'Your OTP code has expired. Please click Resend OTP.']);
+        }
+
+        $attempts = (int) ($otpData['attempts'] ?? 0);
+        if ($attempts >= 5) {
+            $request->session()->forget('password_reset_otp');
+            return redirect()
+                ->route('password.request')
+                ->with('error', 'Too many invalid OTP attempts. Please request a new OTP.');
+        }
+
+        if (!Hash::check(trim($request->input('otp')), $otpData['otp_hash'])) {
+            $otpData['attempts'] = $attempts + 1;
+            $request->session()->put('password_reset_otp', $otpData);
+
+            return back()->withErrors(['otp' => 'Invalid OTP code. Please check your email and try again.']);
+        }
+
+        User::where('worker_id', $otpData['worker_id'])->update([
             'password_hash' => Hash::make($request->input('new_password')),
         ]);
 
-        $request->session()->forget('reset_worker_id');
+        $request->session()->forget('password_reset_otp');
 
         return redirect()
             ->route('login')
             ->with('success', 'Password reset successful. You can now log in.');
     }
-
 }

@@ -29,7 +29,7 @@
                 </p>
 
                 <p class="forgot-description reveal" style="--i: 2">
-                    Enter your Worker ID to verify your account and reset your password.
+                    Enter your registered Email to verify your account and reset your password.
                 </p>
 
                 <!-- ERROR MESSAGE -->
@@ -45,24 +45,24 @@
                     </div>
                 @endif
 
-                <!-- VERIFY WORKER ID FORM -->
+                <!-- VERIFY EMAIL FORM -->
                 <form method="POST" action="{{ route('password.verify') }}" id="forgotForm" class="reveal" style="--i: 3">
                     @csrf
 
-                    <!-- WORKER ID -->
+                    <!-- EMAIL -->
                     <div class="forgot-form-group">
-                        <label for="workerId">
-                            Worker ID :
+                        <label for="email">
+                            Email :
                         </label>
 
                         <div class="input-wrapper">
                             <input
-                                type="text"
-                                id="workerId"
-                                name="worker_id"
-                                value="{{ old('worker_id') }}"
-                                placeholder="e.g. ILM1001"
-                                autocomplete="username"
+                                type="email"
+                                id="email"
+                                name="email"
+                                value="{{ old('email') }}"
+                                placeholder="e.g. name@example.com"
+                                autocomplete="email"
                                 required
                                 autofocus
                             >

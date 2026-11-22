@@ -28,6 +28,9 @@
         <symbol id="i-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
         <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
         <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></symbol>
+        <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+        <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>        
+        <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
     </svg>
 
     <!-- ================================ HEADER ================================ -->
@@ -99,12 +102,13 @@
                         <span class="user-role" id="dropdownUserRole">{{ ($navUser->role ?? 'HR') === 'HR' ? 'HR Administrator' : $navUser->role }}</span>
                     </div>
                     <ul class="profile-dropdown-menu">
-                        <li><a href="{{ route('worker.dashboard') }}">View Profile</a></li>
-                        <li><a href="{{ route('hr.dashboard') }}">Dashboard</a></li>
+                        <li><a href="{{ route('worker.dashboard') }}"><svg class="icon" aria-hidden="true" style="font-size:15px"><use href="#i-user"/></svg>View Profile</a></li>
+                        <li><a href="{{ route('hr.dashboard') }}"><svg class="icon" aria-hidden="true" style="font-size:15px"><use href="#i-dashboard"/></svg>Dashboard</a></li>
                         <li class="divider"></li>
                         <li>
                             <a href="{{ route('logout') }}" class="logout-link"
-                               onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Log Out</a>
+                               onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                               <svg class="icon" aria-hidden="true" style="font-size:15px"><use href="#i-logout"/></svg>Log Out</a>
                             <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                                 @csrf
                             </form>
@@ -251,6 +255,16 @@
                 <form action="{{ route('hr.updateThresholds') }}" method="POST">
                     @csrf
                     <div class="configuration-body">
+
+                        <div class="switch-row">
+                            <div class="switch-text">
+                                <strong>Auto-enforce tier order (Gold &gt; Silver &gt; Bronze)</strong>
+                                <small>Moving one slider adjusts adjacent badge tiers automatically.</small>
+                            </div>
+                            <span class="total-hint" style="white-space: nowrap;">
+                                <svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Active
+                            </span>
+                        </div>
 
                         <!-- GOLD -->
                         <div class="slider-row">

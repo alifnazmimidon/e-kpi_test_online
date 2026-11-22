@@ -1,456 +1,617 @@
- /* =========================================
-     GLOBAL
-========================================= */
+/* =====================================================
+   GLOBAL & DESIGN TOKENS
+===================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
 
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
+:root {
+    --ilm-red: #E31B23;
+    --ilm-red-dark: #B51218;
+    --ilm-red-light: #FFF1F2;
+    --ilm-black: #18181B;
+    --ilm-grey: #52525B;
+    --ilm-green: #16A34A;
+    --ilm-green-light: #DCFCE7;
+    --white: #FFFFFF;
+    --border: #D4D4D8;
+    --soft-border: #E4E4E7;
+    --ilm-light-grey: #F4F4F5;
+
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --t-fast: 180ms;
+    --t-base: 280ms;
+}
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Montserrat', sans-serif;
 }
 
 body {
-    background: #f3f4f6;
-    color: #222;
+    font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: #18181B;
+    color: var(--ilm-black);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
 }
 
 button,
 input {
-     font-family: inherit;
+    font: inherit;
 }
 
+button {
+    touch-action: manipulation;
+}
+
+:focus-visible {
+    outline: 2px solid var(--ilm-red);
+    outline-offset: 2px;
+}
+
+[hidden] {
+    display: none !important;
+}
 
 /* =====================================================
-   FORGOT PASSWORD PAGE
+   ANIMATIONS
 ===================================================== */
+@keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
 
+@keyframes heroZoom {
+    from { transform: scale(1.06); opacity: 0.35; }
+    to   { transform: scale(1); opacity: 0.75; }
+}
+
+@keyframes alertShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.reveal {
+    animation: rise 0.6s var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 80ms);
+}
+
+/* =====================================================
+   FORGOT & RESET PASSWORD PAGE LAYOUT
+===================================================== */
 .forgot-page {
-
     width: 100%;
-
     min-height: 100vh;
-
+    min-height: 100dvh;
     display: flex;
-
-    background: #ffffff;
-
-    font-family: Arial, Helvetica, sans-serif;
-
+    position: relative;
+    background: #18181B;
+    overflow-x: hidden;
 }
-
 
 /* =====================================================
-   LEFT SIDE
+   LEFT SIDE & FORM CARD
 ===================================================== */
-
 .forgot-left {
-
     width: 42%;
-
     min-height: 100vh;
-
+    min-height: 100dvh;
     display: flex;
-
-    flex-direction: column;
-
     justify-content: center;
-
-    padding: 50px 70px;
-
+    align-items: center;
+    padding: 32px 24px;
     background: #ffffff;
-
+    position: relative;
+    z-index: 2;
 }
 
+.forgot-box {
+    width: 100%;
+    max-width: 390px;
+    padding: 32px 28px;
+}
 
 /* =====================================================
    LOGO
 ===================================================== */
-
 .forgot-logo {
-
     width: 95px;
-
     height: 70px;
-
-    margin-bottom: 35px;
-
+    margin: 0 auto 22px;
     display: flex;
-
     align-items: center;
-
     justify-content: center;
-
-    font-size: 11px;
-
-    text-align: center;
-
     overflow: hidden;
-
+    transition: transform var(--t-base) var(--ease-out);
 }
 
+.forgot-logo:hover {
+    transform: scale(1.04);
+}
 
 .forgot-logo img {
-
-    width: 100%;
-
-    height: 100%;
-
+    max-width: 100%;
+    max-height: 100%;
     object-fit: contain;
-
 }
 
-
 /* =====================================================
-   TITLE
+   TITLE, SUBTITLE & DESCRIPTION
 ===================================================== */
-
 .forgot-title {
-
-    margin-bottom: 18px;
-
+    text-align: center;
+    font-size: clamp(23px, 2.3vw, 28px);
+    font-weight: 800;
+    color: var(--ilm-black);
+    letter-spacing: -0.4px;
+    margin-bottom: 6px;
 }
 
-
-.forgot-title h1 {
-
-    margin: 0;
-
-    font-size: 30px;
-
-    font-weight: 700;
-
-    color: #18181B;
-
-}
-
-
-.forgot-title p {
-
-    margin-top: 7px;
-
-    margin-bottom: 0;
-
+.forgot-subtitle {
+    text-align: center;
     font-size: 13px;
-
     font-weight: 700;
-
-    color: #71717A;
-
-    letter-spacing: 0.3px;
-
+    color: var(--ilm-grey);
+    letter-spacing: 0.6px;
+    margin-bottom: 14px;
 }
-
-
-/* =====================================================
-   DESCRIPTION
-===================================================== */
 
 .forgot-description {
-
-    max-width: 360px;
-
-    margin: 0 0 28px;
-
-    color: #71717A;
-
+    text-align: center;
+    margin: 0 auto 26px;
+    color: var(--ilm-grey);
     font-size: 13px;
-
     line-height: 1.6;
-
 }
 
+.forgot-description strong {
+    color: var(--ilm-black);
+    font-weight: 700;
+}
 
 /* =====================================================
-   FORM
+   ALERT MESSAGES
 ===================================================== */
-
-.forgot-form-group {
-
-    width: 100%;
-
-    margin-bottom: 22px;
-
+.forgot-alert {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 18px;
 }
 
+.forgot-alert.error {
+    background: var(--ilm-red-light);
+    color: var(--ilm-red);
+    border: 1px solid #fecdd3;
+    animation: alertShake 0.4s var(--ease-out);
+}
+
+.forgot-alert.success {
+    background: var(--ilm-green-light);
+    color: var(--ilm-green);
+    border: 1px solid #bbf7d0;
+}
+
+/* =====================================================
+   FORM & INPUTS
+===================================================== */
+.forgot-form-group {
+    width: 100%;
+    margin-bottom: 18px;
+}
 
 .forgot-form-group label {
-
     display: block;
-
-    margin-bottom: 8px;
-
-    font-size: 13px;
-
-    font-weight: 600;
-
-    color: #27272A;
-
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ilm-grey);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
 }
 
+.input-wrapper {
+    position: relative;
+}
 
 .forgot-form-group input {
-
     width: 100%;
-
-    height: 42px;
-
-    padding: 0 13px;
-
-    box-sizing: border-box;
-
-    border: 1px solid #AAAAAA;
-
-    border-radius: 5px;
-
+    height: 44px;
+    padding: 0 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
     outline: none;
-
-    font-size: 13px;
-
-    color: #18181B;
-
-    transition:
-        border-color 0.2s ease,
-        box-shadow 0.2s ease;
-
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ilm-black);
+    background: #ffffff;
+    transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease;
 }
 
+/* Ruang tambahan di kanan untuk medan kata laluan yang ada butang mata */
+.input-wrapper input[type="password"],
+.input-wrapper input[data-has-toggle="true"],
+.input-wrapper .eye-button ~ input,
+.input-wrapper:has(.eye-button) input {
+    padding-right: 44px;
+}
 
 .forgot-form-group input::placeholder {
-
     color: #A1A1AA;
-
 }
-
 
 .forgot-form-group input:hover {
-
-    border-color: #777777;
-
+    border-color: #A1A1AA;
 }
-
 
 .forgot-form-group input:focus {
-
-    border-color: #E51B23;
-
-    box-shadow:
-        0 0 0 3px rgba(229, 27, 35, 0.10);
-
+    border-color: var(--ilm-red);
+    box-shadow: 0 0 0 3.5px rgba(227, 27, 35, 0.14);
 }
 
-
 /* =====================================================
-   BUTTON
+   EYE BUTTON & ICON ANIMATION
 ===================================================== */
-
-.forgot-button {
-
-    width: 100%;
-
-    height: 43px;
-
+.eye-button {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
     border: none;
-
-    border-radius: 5px;
-
-    background: #E51B23;
-
-    color: #ffffff;
-
-    font-size: 13px;
-
-    font-weight: 700;
-
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ilm-grey);
     cursor: pointer;
-
-    transition:
-        background 0.2s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
-
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--t-fast) ease, background var(--t-fast) ease, transform var(--t-fast) var(--ease-out);
 }
 
-
-.forgot-button:hover {
-
-    background: #C9141B;
-
-    transform: translateY(-2px);
-
-    box-shadow:
-        0 6px 14px rgba(229, 27, 35, 0.20);
-
+.eye-button:hover {
+    color: var(--ilm-black);
+    background: var(--ilm-light-grey);
 }
 
-
-.forgot-button:active {
-
-    transform: translateY(0);
-
+.eye-button:active {
+    transform: translateY(-50%) scale(0.9);
 }
 
+.eye-svg {
+    position: absolute;
+    transition: opacity 220ms var(--ease-out), transform 240ms var(--ease-out);
+}
+
+.eye-open {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+}
+
+.eye-closed {
+    opacity: 0;
+    transform: scale(0.7) rotate(-12deg);
+}
+
+.eye-closed .eye-slash {
+    stroke-dasharray: 29;
+    stroke-dashoffset: 29;
+    transition: stroke-dashoffset 260ms var(--ease-out) 40ms;
+}
+
+.eye-button.is-visible {
+    color: var(--ilm-red);
+}
+
+.eye-button.is-visible .eye-open {
+    opacity: 0;
+    transform: scale(0.7) rotate(12deg);
+}
+
+.eye-button.is-visible .eye-closed {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+}
+
+.eye-button.is-visible .eye-closed .eye-slash {
+    stroke-dashoffset: 0;
+}
 
 /* =====================================================
-   MESSAGE
+   PASSWORD HINT
 ===================================================== */
-
-.forgot-message {
-
-    min-height: 18px;
-
-    margin-top: 14px;
-
+.password-hint {
+    margin-top: -8px;
+    margin-bottom: 18px;
     font-size: 12px;
-
+    font-weight: 500;
+    color: var(--ilm-grey);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color var(--t-fast) ease;
 }
 
-
-.forgot-message.error {
-
-    color: #E51B23;
-
+.password-hint::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #CBD5E1;
+    flex-shrink: 0;
+    transition: background var(--t-fast) ease, transform var(--t-fast) var(--ease-out);
 }
 
-
-.forgot-message.success {
-
-    color: #16A34A;
-
+.password-hint.is-valid {
+    color: var(--ilm-green);
+    font-weight: 600;
 }
 
+.password-hint.is-valid::before {
+    background: var(--ilm-green);
+    transform: scale(1.2);
+}
 
 /* =====================================================
-   BACK TO LOGIN
+   SUBMIT BUTTON & LOADER
 ===================================================== */
+.forgot-button {
+    width: 100%;
+    height: 45px;
+    border: none;
+    border-radius: 8px;
+    background: var(--ilm-red);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    cursor: pointer;
+    margin-top: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(227, 27, 35, 0.22);
+    transition: background var(--t-fast) ease, transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) ease;
+}
+
+.forgot-button:hover:not(:disabled) {
+    background: var(--ilm-red-dark);
+    transform: translateY(-1.5px);
+    box-shadow: 0 8px 18px rgba(227, 27, 35, 0.3);
+}
+
+.forgot-button:active:not(:disabled) {
+    transform: translateY(0) scale(0.99);
+}
+
+.forgot-button:disabled {
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
+.btn-loader {
+    display: none;
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+}
+
+.forgot-button.is-loading .btn-text {
+    display: none;
+}
+
+.forgot-button.is-loading .btn-loader {
+    display: inline-block;
+}
+
+/* =====================================================
+   BACK TO LOGIN LINK
+===================================================== */
+.back-login-wrap {
+    text-align: center;
+    margin-top: 24px;
+}
 
 .back-login {
-
-    width: fit-content;
-
-    margin-top: 20px;
-
-    color: #71717A;
-
-    font-size: 11px;
-
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--ilm-grey);
+    font-size: 11.5px;
     font-weight: 700;
-
+    letter-spacing: 0.3px;
     text-decoration: none;
-
-    transition:
-        color 0.2s ease;
-
+    padding: 4px 2px;
+    transition: color var(--t-fast) ease;
 }
 
+.back-arrow {
+    display: inline-block;
+    transition: transform var(--t-fast) var(--ease-out);
+}
+
+.back-login::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 1.5px;
+    background: var(--ilm-red);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform var(--t-base) var(--ease-out);
+}
 
 .back-login:hover {
-
-    color: #E51B23;
-
+    color: var(--ilm-red);
 }
 
+.back-login:hover .back-arrow {
+    transform: translateX(-3px);
+}
+
+.back-login:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+}
 
 /* =====================================================
-   RIGHT SIDE
+   RIGHT SIDE HERO IMAGE
 ===================================================== */
-
 .forgot-right {
-
     width: 58%;
-
     min-height: 100vh;
-
     position: relative;
-
     overflow: hidden;
-
-    background: #F4F4F5;
-
+    background: #18181B;
+    z-index: 1;
 }
-
-
-.forgot-right::after {
-
-    content: "";
-
-    position: absolute;
-
-    inset: 0;
-
-    background: rgba(255, 255, 255, 0.18);
-
-    pointer-events: none;
-
-}
-
 
 .forgot-right img {
-
     width: 100%;
-
     height: 100%;
-
     object-fit: cover;
-
-    opacity: 0.65;
-
+    object-position: center;
+    opacity: 0.75;
+    animation: heroZoom 1.2s var(--ease-out) forwards;
 }
 
+.image-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(24, 24, 27, 0.35), rgba(227, 27, 35, 0.22));
+    pointer-events: none;
+}
 
 /* =====================================================
-   RESPONSIVE
+   RESPONSIVE (ALL DEVICES + FULL BACKGROUND PRESERVED)
 ===================================================== */
+@media (max-width: 1024px) {
+    .forgot-left {
+        width: 50%;
+    }
+    .forgot-right {
+        width: 50%;
+    }
+}
 
 @media (max-width: 800px) {
-
-    .forgot-left {
-
-        width: 100%;
-
-        padding: 40px;
-
+    .forgot-page {
+        flex-direction: column;
     }
-
 
     .forgot-right {
-
-        display: none;
-
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        min-height: 100dvh;
+        z-index: 1;
     }
 
+    .forgot-right img {
+        opacity: 0.82;
+    }
+
+    .image-overlay {
+        background: linear-gradient(145deg, rgba(24, 24, 27, 0.52), rgba(227, 27, 35, 0.28));
+    }
+
+    .forgot-left {
+        width: 100%;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: 24px 18px;
+        background: transparent;
+        z-index: 2;
+    }
+
+    .forgot-box {
+        max-width: 410px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.65);
+        border-radius: 18px;
+        padding: 34px 26px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+    }
 }
 
-/* PASSWORD HINT */
-.password-hint {
-    margin-top: -10px;
-    margin-bottom: 20px;
+@media (max-width: 480px) {
+    .forgot-left {
+        padding: 16px 14px;
+    }
 
-    font-size: 12px;
-    color: #777;
+    .forgot-box {
+        padding: 28px 20px;
+        border-radius: 14px;
+    }
+
+    .forgot-logo {
+        width: 80px;
+        height: 58px;
+        margin-bottom: 16px;
+    }
+
+    .forgot-form-group input {
+        height: 46px;
+        font-size: 16px; /* Elak auto-zoom pada iOS Safari */
+    }
+
+    .eye-button {
+        width: 38px;
+        height: 38px;
+        right: 4px;
+    }
+
+    .forgot-button {
+        height: 46px;
+    }
 }
 
+@media (max-height: 540px) and (orientation: landscape) {
+    .forgot-left {
+        align-items: flex-start;
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
 
-/* RESET PASSWORD INPUT */
-#resetForm input {
-    width: 100%;
-    box-sizing: border-box;
+    .forgot-box {
+        padding: 22px 24px;
+    }
+
+    .forgot-logo {
+        width: 70px;
+        height: 50px;
+        margin-bottom: 10px;
+    }
 }
 
-
-/* PASSWORD INPUT FOCUS */
-#resetForm input:focus {
-    outline: none;
-    border-color: #E31B23;
-    box-shadow: 0 0 0 2px rgba(227, 27, 35, 0.08);
-}
-
-
-/* RESET MESSAGE */
-#resetMessage {
-    min-height: 20px;
-    margin-top: 15px;
-    font-size: 13px;
-    text-align: center;
+/* =====================================================
+   REDUCED MOTION
+===================================================== */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

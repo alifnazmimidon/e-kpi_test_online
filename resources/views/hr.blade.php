@@ -35,6 +35,9 @@
         <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="m6 3 14 9-14 9z"/></symbol>
         <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></symbol>
+        <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+        <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>        
+        <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
     </svg>
 
     <!-- HEADER -->
@@ -105,12 +108,13 @@
                         <span class="user-role" id="dropdownUserRole">{{ ($navUser->role ?? 'HR') === 'HR' ? 'HR Administrator' : $navUser->role }}</span>
                     </div>
                     <ul class="profile-dropdown-menu">
-                        <li><a href="{{ route('worker.dashboard') }}">View Profile</a></li>
-                        <li><a href="{{ route('hr.dashboard') }}">Dashboard</a></li>
+                        <li><a href="{{ route('worker.dashboard') }}"><svg class="icon" aria-hidden="true" style="font-size:15px"><use href="#i-user"/></svg>View Profile</a></li>
+                        <li><a href="{{ route('hr.dashboard') }}"><svg class="icon" aria-hidden="true" style="font-size:15px"><use href="#i-dashboard"/></svg>Dashboard</a></li>
                         <li class="divider"></li>
                         <li>
                             <a href="{{ route('logout') }}" class="logout-link"
-                               onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Log Out</a>
+                               onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                               <svg class="icon" aria-hidden="true" style="font-size:15px"><use href="#i-logout"/></svg>Log Out</a>
                             <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                                 @csrf
                             </form>
@@ -139,8 +143,20 @@
     </div>
     </nav>
 
-    <!-- MAIN DASHBOARD -->
-    <main class="dashboard" id="main">
+<!-- MAIN DASHBOARD -->
+    @php
+        $syncPayloadData = [
+            'kpiTrend' => $kpiTrend ?? [20, 45, 60, 75],
+            'departmentScores' => collect($departmentsPerformance ?? [])->map(function ($dept) {
+                return [
+                    'name'  => strtoupper($dept->department_name),
+                    'score' => (float) $dept->avg_kpi,
+                ];
+            })->values(),
+            'aiInsights' => $aiInsights ?? [],
+        ];
+    @endphp
+    <main class="dashboard" id="main" data-sync-payload='@json($syncPayloadData, JSON_HEX_APOS)'>
         <section class="top-section">
 
             <!-- LEFT SIDE -->
@@ -267,7 +283,7 @@
                 <section class="badge-section reveal" style="--i:3" aria-labelledby="badgeTitle">
                     <div class="badge-header">
                         <h3 id="badgeTitle"><svg class="icon" aria-hidden="true"><use href="#i-trophy"/></svg> Badge Ranking</h3>
-                        <select id="departmentSelect" aria-label="Filter ranking by department" onchange="location.href='?dept_filter=' + encodeURIComponent(this.value);">
+                        <select id="departmentSelect" aria-label="Filter ranking by department" onchange="filterBadgeRanking(this.value)">
                             <option value="WEBTECH" {{ ($selectedDeptName ?? '') == 'WEBTECH' ? 'selected' : '' }}>WEBTECH</option>
                             <option value="R&D" {{ ($selectedDeptName ?? '') == 'R&D' ? 'selected' : '' }}>R&D</option>
                             <option value="VIDEO" {{ ($selectedDeptName ?? '') == 'VIDEO' ? 'selected' : '' }}>VIDEO PRODUCTION</option>
@@ -313,14 +329,15 @@
                             <svg class="icon ai-sparkle" aria-hidden="true"><use href="#i-sparkles"/></svg> AI Analytics
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <span class="ai-status-badge">
+                            <span class="ai-status-badge" id="aiStatusBadge">
                                 {{ ($aiSource ?? '') === 'gemini-ai' ? 'Gemini AI Live' : 'Smart Insights' }}
                             </span>
-                            <form action="{{ route('hr.ai.refresh') }}" method="POST" style="margin:0;">
+                            <form action="{{ route('hr.ai.refresh') }}" method="POST" id="aiRefreshForm" style="margin:0;">
                                 @csrf
-                                <button type="submit" class="nav-btn" title="Regenerate AI Analysis" aria-label="Regenerate AI Analysis"
-                                        onclick="this.disabled=true; this.style.opacity='0.6'; this.form.submit();">
-                                    <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
+                                <button type="button" class="nav-btn" id="aiRefreshBtn"
+                                        onclick="refreshAiAnalytics()"
+                                        title="Regenerate AI Analysis" aria-label="Regenerate AI Analysis">
+                                    <svg class="icon" id="aiRefreshIcon" aria-hidden="true"><use href="#i-refresh"/></svg>
                                 </button>
                             </form>
                         </div>
@@ -328,14 +345,14 @@
 
                     <style>
                         #aiCardContent {
-                            height: 195px !important;
-                            min-height: 195px !important;
-                            max-height: 195px !important;
+                            height: 148px !important;
+                            min-height: 148px !important;
+                            max-height: 148px !important;
                             overflow-y: auto !important;
                             display: flex;
                             flex-direction: column;
                             justify-content: flex-start;
-                            padding-right: 6px;
+                            padding: 14px 12px 14px 16px !important;
                             scrollbar-width: thin;
                             scrollbar-color: #cbd5e1 transparent;
                         }
@@ -346,7 +363,6 @@
                             background-color: #cbd5e1;
                             border-radius: 999px;
                         }
-                        /* Buang pemotongan '...' supaya tajuk penuh dipaparkan */
                         #aiCardContent * {
                             white-space: normal !important;
                             text-overflow: unset !important;
@@ -354,7 +370,11 @@
                     </style>
 
                     <div class="ai-content-wrapper">
-                        <div class="ai-content" id="aiCardContent"></div>
+                        <div class="ai-content" id="aiCardContent">
+                            <div class="ai-content-wrapper">
+                                <div class="ai-content" id="aiCardContent" data-ai-insights='@json($aiInsights ?? [])'></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="ai-navigation">
@@ -531,6 +551,188 @@
         if (!aiPaused && !aiHover && aiInsights.length > 0) aiTimer = setInterval(nextAISlide, 6000);
     }
 
+    //AI REFRESH
+    async function refreshAiAnalytics() {
+        const form = $('aiRefreshForm');
+        const btn = $('aiRefreshBtn');
+        const iconEl = $('aiRefreshIcon');
+        const card = $('aiCardContent');
+        const badge = $('aiStatusBadge');
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        if (!form || !btn || btn.disabled) return;
+
+        // Aktifkan animasi pusingan ikon & paparan loading dalam kad AI sahaja
+        btn.disabled = true;
+        btn.style.opacity = '0.65';
+        if (iconEl) iconEl.style.animation = 'spin 0.85s linear infinite';
+        clearInterval(aiTimer);
+
+        if (card) {
+            card.innerHTML = `
+                <span class="ai-tag">ANALYZING DATA</span>
+                <div class="ai-title">Regenerating AI Insights...</div>
+                <div class="ai-desc">Analyzing latest department KPI & submission records.</div>`;
+        }
+
+        try {
+            const res = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json, text/html'
+                }
+            });
+
+            if (!res.ok) throw new Error('Failed to refresh AI insights');
+
+            const contentType = res.headers.get('content-type') || '';
+
+            if (contentType.includes('application/json')) {
+                // Jika Controller memulangkan respons JSON
+                const data = await res.json();
+                if (Array.isArray(data.aiInsights) && data.aiInsights.length > 0) {
+                    aiInsights = data.aiInsights;
+                }
+                if (badge && data.aiSource) {
+                    badge.textContent = data.aiSource === 'gemini-ai' ? 'Gemini AI Live' : 'Smart Insights';
+                }
+            } else {
+                // Jika Controller masih menggunakan redirect()->back(), ekstrak data AI sahaja daripada HTML
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const newCard = doc.getElementById('aiCardContent');
+                const newBadge = doc.getElementById('aiStatusBadge');
+
+                if (newCard && newCard.dataset.aiInsights) {
+                    const parsed = JSON.parse(newCard.dataset.aiInsights);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        aiInsights = parsed;
+                    }
+                }
+                if (newBadge && badge) {
+                    badge.textContent = newBadge.textContent.trim();
+                }
+            }
+
+            currentSlide = 0;
+            renderAISlide(0);
+            showAiToast('AI Analytics updated.');
+        } catch (err) {
+            console.error('AI Refresh Error:', err);
+            renderAISlide(currentSlide);
+            showAiToast('Failed to refresh AI Analytics.', true);
+        } finally {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            if (iconEl) iconEl.style.animation = '';
+            syncAIAutoplay();
+        }
+    }
+
+    // FILTER BADGE RANKING TANPA REFRESH PAGE
+    async function filterBadgeRanking(dept) {
+        const selectEl = $('departmentSelect');
+        const listEl = $('badgeList');
+        if (!selectEl || !listEl) return;
+
+        const url = new URL(window.location.href);
+        url.searchParams.set('dept_filter', dept);
+
+        selectEl.disabled = true;
+        listEl.style.opacity = '0.45';
+        listEl.style.transition = 'opacity 180ms ease';
+
+        try {
+            const res = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json, text/html'
+                }
+            });
+
+            if (!res.ok) throw new Error('Failed to load badge rankings');
+
+            const contentType = res.headers.get('content-type') || '';
+
+            if (contentType.includes('application/json')) {
+                const data = await res.json();
+                renderBadgeList(data.badgeRankings || []);
+            } else {
+                // Ekstrak bahagian #badgeList sahaja daripada respons HTML sedia ada
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const newList = doc.getElementById('badgeList');
+                if (newList) {
+                    listEl.innerHTML = newList.innerHTML;
+                }
+            }
+
+            // Kemas kini parameter URL secara senyap tanpa reload halaman
+            window.history.replaceState({}, '', url.toString());
+        } catch (err) {
+            console.error('Badge Filter Error:', err);
+        } finally {
+            selectEl.disabled = false;
+            listEl.style.opacity = '1';
+        }
+    }
+
+    function renderBadgeList(rankings) {
+        const listEl = $('badgeList');
+        if (!listEl) return;
+
+        if (!rankings || rankings.length === 0) {
+            listEl.innerHTML = `<p style="text-align: center; color: #94a3b8; padding: 15px;">No worker records found.</p>`;
+            return;
+        }
+
+        listEl.innerHTML = rankings.map((worker, index) => {
+            const rank = index + 1;
+            const score = Number(worker.kpi_score ?? 0).toFixed(1);
+            const avatarHtml = worker.profile_photo
+                ? `<img src="${esc(worker.profile_photo)}" alt="${esc(worker.name)}"
+                        style="width:100%; height:100%; object-fit:cover; border-radius:50%; display:block;"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='';">
+                   <svg class="icon" aria-hidden="true" style="display:none;"><use href="#i-user"/></svg>`
+                : `<svg class="icon" aria-hidden="true"><use href="#i-user"/></svg>`;
+
+            let rankIconHtml = '';
+            if (index === 0) {
+                rankIconHtml = `<span class="rank-icon"><svg class="icon" aria-hidden="true"><use href="#i-crown"/></svg></span>`;
+            } else if (index < 3) {
+                rankIconHtml = `<span class="rank-icon"><svg class="icon" aria-hidden="true"><use href="#i-medal"/></svg></span>`;
+            }
+
+            return `
+                <div class="badge-user rank-${rank}" style="--i:${index}">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            ${avatarHtml}
+                            ${rankIconHtml}
+                        </div>
+                        <span class="name">${esc(worker.name)}</span>
+                    </div>
+                    <span class="rank-badge">#${rank} (${score}%)</span>
+                </div>`;
+        }).join('');
+    }
+
+    function showAiToast(message, isError = false) {
+        const region = $('toastRegion');
+        if (!region) return;
+        const toast = document.createElement('div');
+        toast.className = `toast ${isError ? 'error' : ''}`;
+        toast.innerHTML = `${icon(isError ? 'alert' : 'check')}<span>${esc(message)}</span>`;
+        region.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('out');
+            setTimeout(() => toast.remove(), 220);
+        }, 2600);
+    }
+
   @php
         $chartTrendData = $kpiTrend ?? [20, 45, 60, 75];
         $chartDeptScores = collect($departmentsPerformance ?? [])->map(fn($dept) => [
@@ -572,25 +774,228 @@
             }
         syncAIAutoplay();
 
-        // 4. LOGIK BUTANG SYNC / REFRESH
+
+        // 4. LOGIK BUTANG SYNC / REFRESH (TANPA RELOAD KESELURUHAN PAGE)
+        const syncStatusEl = $('syncStatus');
         const syncBtn = $('syncBtn');
         const syncText = $('syncText');
+        let lastSyncedAt = Date.now();
+        let isSyncing = false;
+
+        function formatSyncAge(ts) {
+            const diffSec = Math.floor((Date.now() - ts) / 1000);
+            if (diffSec < 10) return 'Synced just now';
+            if (diffSec < 60) return `Synced ${diffSec}s ago`;
+            const diffMin = Math.floor(diffSec / 60);
+            if (diffMin < 60) return `Synced ${diffMin}m ago`;
+            return `Synced ${Math.floor(diffMin / 60)}h ago`;
+        }
+
+        // Kemas kini label masa penyegerakan setiap 30 saat
+        setInterval(() => {
+            if (!isSyncing && syncText && !syncStatusEl?.classList.contains('error')) {
+                syncText.textContent = formatSyncAge(lastSyncedAt);
+            }
+        }, 30000);
+
+        function showSyncToast(message, isError = false) {
+            const region = $('toastRegion');
+            if (!region) return;
+            const toast = document.createElement('div');
+            toast.className = `toast ${isError ? 'error' : ''}`;
+            toast.innerHTML = `${icon(isError ? 'alert' : 'check')}<span>${esc(message)}</span>`;
+            region.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('out');
+                setTimeout(() => toast.remove(), 220);
+            }, 2600);
+        }
+
+        async function syncDashboardData() {
+            if (isSyncing) return;
+            isSyncing = true;
+
+            if (syncStatusEl) {
+                syncStatusEl.classList.remove('error');
+                syncStatusEl.classList.add('loading');
+            }
+            if (syncBtn) syncBtn.disabled = true;
+            if (syncText) syncText.textContent = 'Syncing...';
+
+            try {
+                // Kekalkan pilihan jabatan semasa pada Badge Ranking
+                const url = new URL(window.location.href);
+                const deptSelect = $('departmentSelect');
+                if (deptSelect && deptSelect.value) {
+                    url.searchParams.set('dept_filter', deptSelect.value);
+                }
+
+                const res = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'text/html'
+                    }
+                });
+
+                if (!res.ok) throw new Error('Sync request failed');
+
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+
+                // A. Kemas kini 3 Summary Cards
+                ['avgKpiVal', 'avgKpiTrendText', 'overloadVal', 'overloadSubText', 'targetVal', 'targetProgressText'].forEach(id => {
+                    const currentEl = $(id);
+                    const freshEl = doc.getElementById(id);
+                    if (currentEl && freshEl) currentEl.textContent = freshEl.textContent.trim();
+                });
+
+                ['avgKpiTrend', 'overloadCard', 'overloadSubText'].forEach(id => {
+                    const currentEl = $(id);
+                    const freshEl = doc.getElementById(id);
+                    if (currentEl && freshEl) {
+                        currentEl.className = freshEl.className;
+                        if (id === 'avgKpiTrend') currentEl.innerHTML = freshEl.innerHTML;
+                    }
+                });
+
+                // B. Kemas kini Charts & AI Analytics
+                const freshMain = doc.getElementById('main');
+                if (freshMain && freshMain.dataset.syncPayload) {
+                    const payload = JSON.parse(freshMain.dataset.syncPayload);
+                    renderCharts({
+                        kpiTrend: payload.kpiTrend,
+                        departmentScores: payload.departmentScores
+                    });
+                    if (Array.isArray(payload.aiInsights) && payload.aiInsights.length > 0) {
+                        aiInsights = payload.aiInsights;
+                        currentSlide = 0;
+                        renderAISlide(0);
+                    }
+                }
+
+                const freshAiBadge = doc.getElementById('aiStatusBadge');
+                if ($('aiStatusBadge') && freshAiBadge) {
+                    $('aiStatusBadge').textContent = freshAiBadge.textContent.trim();
+                }
+
+                // C. Kemas kini Badge Ranking
+                const freshBadgeList = doc.getElementById('badgeList');
+                if ($('badgeList') && freshBadgeList) {
+                    $('badgeList').innerHTML = freshBadgeList.innerHTML;
+                }
+
+                // D. Kemas kini Jadual Departments' Performance
+                const freshDeptCount = doc.getElementById('deptCount');
+                if ($('deptCount') && freshDeptCount) {
+                    $('deptCount').textContent = freshDeptCount.textContent.trim();
+                }
+                const freshPerfBody = doc.getElementById('performanceTableBody');
+                if ($('performanceTableBody') && freshPerfBody) {
+                    $('performanceTableBody').innerHTML = freshPerfBody.innerHTML;
+                }
+
+                lastSyncedAt = Date.now();
+                if (syncStatusEl) syncStatusEl.classList.remove('loading', 'error');
+                if (syncText) syncText.textContent = 'Synced just now';
+                showSyncToast('Dashboard data synced.');
+            } catch (err) {
+                console.error('Dashboard Sync Error:', err);
+                if (syncStatusEl) {
+                    syncStatusEl.classList.remove('loading');
+                    syncStatusEl.classList.add('error');
+                }
+                if (syncText) syncText.textContent = 'Sync failed';
+                showSyncToast('Failed to sync dashboard data.', true);
+            } finally {
+                isSyncing = false;
+                if (syncBtn) syncBtn.disabled = false;
+            }
+        }
 
         if (syncBtn) {
-            syncBtn.addEventListener('click', function() {
-                const iconSvg = syncBtn.querySelector('.icon');
-                if (iconSvg) {
-                    iconSvg.style.transition = 'transform 0.6s ease';
-                    iconSvg.style.transform = 'rotate(360deg)';
-                }
-                if (syncText) syncText.textContent = 'Syncing...';
-
-                setTimeout(() => {
-                    window.location.reload();
-                }, 400);
-            });
+            syncBtn.addEventListener('click', syncDashboardData);
         }
     });
+
+    async function refreshAiAnalytics() {
+        const form = $('aiRefreshForm');
+        const btn = $('aiRefreshBtn');
+        const iconEl = $('aiRefreshIcon');
+        const card = $('aiCardContent');
+        const badge = $('aiStatusBadge');
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        if (!form || !btn || btn.disabled) return;
+
+        // Aktifkan animasi pusingan ikon & paparan loading dalam kad AI sahaja
+        btn.disabled = true;
+        btn.style.opacity = '0.65';
+        if (iconEl) iconEl.style.animation = 'spin 0.85s linear infinite';
+        clearInterval(aiTimer);
+
+        if (card) {
+            card.innerHTML = `
+                <span class="ai-tag">ANALYZING DATA</span>
+                <div class="ai-title">Regenerating AI Insights...</div>
+                <div class="ai-desc">Analyzing latest department KPI & submission records.</div>`;
+        }
+
+        try {
+            const res = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json, text/html'
+                }
+            });
+
+            if (!res.ok) throw new Error('Failed to refresh AI insights');
+
+            const contentType = res.headers.get('content-type') || '';
+
+            if (contentType.includes('application/json')) {
+                // Jika Controller memulangkan respons JSON
+                const data = await res.json();
+                if (Array.isArray(data.aiInsights) && data.aiInsights.length > 0) {
+                    aiInsights = data.aiInsights;
+                }
+                if (badge && data.aiSource) {
+                    badge.textContent = data.aiSource === 'gemini-ai' ? 'Gemini AI Live' : 'Smart Insights';
+                }
+            } else {
+                // Jika Controller masih menggunakan redirect()->back(), ekstrak data AI sahaja daripada HTML
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const newCard = doc.getElementById('aiCardContent');
+                const newBadge = doc.getElementById('aiStatusBadge');
+
+                if (newCard && newCard.dataset.aiInsights) {
+                    const parsed = JSON.parse(newCard.dataset.aiInsights);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        aiInsights = parsed;
+                    }
+                }
+                if (newBadge && badge) {
+                    badge.textContent = newBadge.textContent.trim();
+                }
+            }
+
+            currentSlide = 0;
+            renderAISlide(0);
+            showAiToast('AI Analytics updated.');
+        } catch (err) {
+            console.error('AI Refresh Error:', err);
+            renderAISlide(currentSlide);
+            showAiToast('Failed to refresh AI Analytics.', true);
+        } finally {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            if (iconEl) iconEl.style.animation = '';
+            syncAIAutoplay();
+        }
+    }
 </script>
 <script src="{{ asset('session.js') }}?v=8"></script>
 <style>

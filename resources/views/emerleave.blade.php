@@ -7,6 +7,152 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Emergency Leave - E-KPI System</title>
     <link rel="stylesheet" href="{{ asset('styleel.css') }}">
+
+    <style>
+        .pending-requests-card {
+            background: #ffffff;
+            border: 1.5px solid #fecaca;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 24px rgba(127, 0, 0, 0.06);
+        }
+        .pending-requests-header {
+            background: linear-gradient(135deg, #7f0000, #991b1b);
+            color: #ffffff;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .pending-requests-header h2 {
+            margin: 0;
+            font-size: 1.02rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pending-badge-count {
+            background: #fef3c7;
+            color: #92400e;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .pending-list-body {
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .pending-req-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            background: #fffafa;
+            transition: all 0.25s ease;
+        }
+        .pending-req-item.highlighted {
+            border-color: #dc2626;
+            background: #fef2f2;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+        }
+        .pri-info { flex: 1; min-width: 240px; }
+        .pri-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+        .pri-name { font-size: 0.96rem; font-weight: 700; color: #0f172a; }
+        .pri-dept {
+            background: #fee2e2;
+            color: #991b1b;
+            font-size: 0.73rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+        .pri-time { font-size: 0.75rem; color: #64748b; }
+        .pri-details { font-size: 0.85rem; color: #334155; }
+        .pri-notes {
+            margin-top: 6px;
+            font-size: 0.8rem;
+            color: #475569;
+            background: #ffffff;
+            border-left: 3px solid #991b1b;
+            padding: 5px 10px;
+            border-radius: 0 6px 6px 0;
+        }
+        .pri-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .pri-btn-approve {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border-radius: 8px; border: none;
+            background: #16a34a; color: #ffffff;
+            font-size: 0.83rem; font-weight: 600; cursor: pointer;
+        }
+        .pri-btn-approve:hover { background: #15803d; }
+        .pri-btn-reject {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border-radius: 8px; border: 1px solid #fecaca;
+            background: #fef2f2; color: #b91c1c;
+            font-size: 0.83rem; font-weight: 600; cursor: pointer;
+        }
+        .pri-btn-reject:hover { background: #fee2e2; }
+        .pri-btn-approve:disabled, .pri-btn-reject:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* NOTIFIKASI LOCENG HR */
+        .hr-notif-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            text-decoration: none;
+            color: #0f172a;
+            transition: background 0.15s ease;
+            cursor: pointer;
+        }
+        .hr-notif-item:hover { background: #fff5f5; }
+        .hr-notif-item.unread { background: #fef2f2; }
+        .hr-notif-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #dc2626;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+        .hr-notif-item:not(.unread) .hr-notif-dot { background: #cbd5e1; }
+        .hr-notif-body { flex: 1; min-width: 0; }
+        .hr-notif-title {
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 2px;
+        }
+        .hr-notif-meta {
+            font-size: 0.78rem;
+            color: #475569;
+            line-height: 1.35;
+        }
+        .hr-notif-time {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            margin-top: 4px;
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
@@ -129,6 +275,20 @@
 
         <h1 class="emergency-page-title reveal" style="--i:2">Emergency Leave Adjustment & Attendance Override</h1>
 
+        <!-- ========== PENDING WORKER REQUESTS (DARI PROFIL PEKERJA) ========== -->
+        <section class="pending-requests-card reveal" style="--i:2" aria-labelledby="pendingReqTitle">
+            <div class="pending-requests-header">
+                <h2 id="pendingReqTitle">
+                    <svg class="icon" aria-hidden="true"><use href="#i-alert-circle"/></svg>
+                    Pending Worker Emergency Leave Requests
+                </h2>
+                <span class="pending-badge-count" id="pendingReqBadge">0 Pending</span>
+            </div>
+            <div class="pending-list-body" id="pendingRequestsBody">
+                <p style="margin:0; color:#64748b; font-size:0.88rem;">Loading pending requests...</p>
+            </div>
+        </section>
+
         <!-- ========== MANUAL ATTENDANCE OVERRIDE FORM ========== -->
         <section class="override-card reveal" style="--i:3" aria-labelledby="overrideTitle">
             <div class="override-header">
@@ -161,8 +321,12 @@
                 <div class="form-group">
                     <label for="reason">Reason:</label>
                     <select id="reason" required>
+                        <option value="Medical / Hospitalization">Medical / Hospitalization</option>
                         <option value="Medical Emergency">Medical Emergency</option>
+                        <option value="Family Emergency">Family Emergency</option>
                         <option value="Personal Emergency">Personal Emergency</option>
+                        <option value="Accident / Vehicle Breakdown">Accident / Vehicle Breakdown</option>
+                        <option value="Natural Disaster">Natural Disaster</option>
                         <option value="Other">Other</option>
                     </select>
                 </div>
@@ -246,7 +410,7 @@
 
     </main>
 
-    <!-- CONFIRMATION DIALOG (shown before a deduction is applied) -->
+    <!-- CONFIRMATION DIALOG -->
     <dialog class="confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle" aria-describedby="confirmDesc">
         <form method="dialog">
             <div class="confirm-body">
@@ -265,19 +429,20 @@
 
     <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-    <!-- LARAVEL SEED DATA (SAFE JSON TAG) -->
+    <!-- LARAVEL SEED DATA -->
     <script type="application/json" id="laravelEmerLeaveSeed">
         <?php echo json_encode([
-            'auditLogs' => $auditLogs ?? [],
+            'pendingRequests' => $pendingRequests ?? [],
+            'auditLogs'       => $auditLogs ?? [],
         ], JSON_HEX_TAG); ?>
     </script>
 
     <script>
-        const OVERRIDE_URL = @json(route('hr.emerleave.store'));
-    /* =====================================================
-       CONFIG & HELPERS
-    ===================================================== */
-    const DEDUCTION_PERCENT = 5;              // single source of truth for the penalty
+    const OVERRIDE_URL = @json(route('hr.emerleave.store'));
+    const NOTIF_API    = @json(\Illuminate\Support\Facades\Route::has('hr.notifications') ? route('hr.notifications') : url('/hr/notifications'));
+    const EMER_URL     = @json(route('hr.emerleave'));
+
+    const DEDUCTION_PERCENT = 5;
     const $ = id => document.getElementById(id);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -288,15 +453,15 @@
         return d.innerHTML;
     };
 
-    // Local calendar date (toISOString() would use UTC and can return "yesterday" in Malaysia before 8am)
     function todayISO() {
         const d = new Date(), p = n => String(n).padStart(2, '0');
         return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
     }
-    // ISO yyyy-mm-dd -> dd/mm/yyyy, with no Date parsing (no timezone drift)
-    const fmtDate = iso => { const [y, m, d] = String(iso).split('-'); return d && m && y ? `${d}/${m}/${y}` : iso; };
+    const fmtDate = iso => {
+        const [y, m, d] = String(iso || '').split('-');
+        return d && m && y ? `${d}/${m}/${y}` : (iso || '-');
+    };
 
-    // Both function names exist across pages; make sure either one is defined
     function fallbackAvatar() {
         const img = $('headerUserProfilePic'), svg = $('defaultAvatarSvg');
         if (img) img.style.display = 'none';
@@ -317,9 +482,9 @@
     }
 
     /* =====================================================
-       AUDIT LOG STATE & RENDERING (LOADED FROM LARAVEL MYSQL)
+       STATE & RENDERING (MYSQL SEED)
     ===================================================== */
-    let seed = { auditLogs: [] };
+    let seed = { pendingRequests: [], auditLogs: [] };
     try {
         const raw = $('laravelEmerLeaveSeed')?.textContent?.trim();
         if (raw) seed = JSON.parse(raw);
@@ -327,10 +492,56 @@
         console.warn('Seed parse warning:', e);
     }
 
-    let auditLogs = Array.isArray(seed.auditLogs) ? seed.auditLogs : [];
-    let currentFilter = 'all';
+    let pendingRequests = Array.isArray(seed.pendingRequests) ? seed.pendingRequests : [];
+    let auditLogs       = Array.isArray(seed.auditLogs) ? seed.auditLogs : [];
+    let currentFilter   = 'all';
 
     const impactLabel = status => status === 'approved' ? 'No Deduct' : `-${DEDUCTION_PERCENT}% Deducted`;
+
+    function renderPendingRequests(highlightId = null) {
+        const body  = $('pendingRequestsBody');
+        const badge = $('pendingReqBadge');
+        if (badge) badge.textContent = `${pendingRequests.length} Pending`;
+        if (!body) return;
+
+        if (!pendingRequests.length) {
+            body.innerHTML = `<p style="margin:0; color:#64748b; font-size:0.88rem;">All caught up — no pending emergency leave requests from staff.</p>`;
+            return;
+        }
+
+        body.innerHTML = pendingRequests.map(req => {
+            const isHighlighted = highlightId && Number(req.id) === Number(highlightId);
+            const noteHtml = req.notes
+                ? `<div class="pri-notes" style="margin-top:6px;padding:6px 10px;background:#fffbeb;border-left:3px solid #f59e0b;border-radius:6px;color:#78350f;"><strong>Details / Explanation:</strong> ${esc(req.notes)}</div>`
+                : '';
+            return `
+                <div class="pending-req-item ${isHighlighted ? 'highlighted' : ''}" id="pending-req-${req.id}">
+                    <div class="pri-info">
+                        <div class="pri-top">
+                            <span class="pri-name">${esc(req.staff)} (${esc(req.worker_id)})</span>
+                            <span class="pri-dept">${esc(req.department)}</span>
+                            <span class="pri-time">&bull; Submitted ${esc(req.submittedAt || 'recently')}</span>
+                        </div>
+                        <div class="pri-details">
+                            Leave Date: <strong>${fmtDate(req.leaveDate)}</strong> &nbsp;|&nbsp; Reason: <strong>${esc(req.reason)}</strong>
+                        </div>
+                        ${noteHtml}
+                    </div>
+                    <div class="pri-actions">
+                        <button type="button" class="pri-btn-approve" onclick="processPendingLeave(${req.id}, 'approved', this)">
+                            ${icon('check')} Approve (No Deduct)
+                        </button>
+                        <button type="button" class="pri-btn-reject" onclick="processPendingLeave(${req.id}, 'rejected', this)">
+                            ${icon('x-circle')} Reject (-${DEDUCTION_PERCENT}%)
+                        </button>
+                    </div>
+                </div>`;
+        }).join('');
+
+        if (highlightId) {
+            document.getElementById(`pending-req-${highlightId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
 
     function renderAuditLogs({ newId = null, animateAll = false } = {}) {
         const tbody = $('auditTableBody');
@@ -366,10 +577,9 @@
                 </tr>`;
         }).join('');
     }
-    
 
     /* =====================================================
-       FORM: UI BEHAVIOUR
+       FORM & CONFIRMATION
     ===================================================== */
     function setError(fieldId, errId, message) {
         const field = $(fieldId), err = $(errId);
@@ -382,7 +592,7 @@
     function toggleNotes() {
         const open = $('reason').value === 'Other';
         $('notesCollapse').classList.toggle('open', open);
-        $('notesCollapse').firstElementChild.toggleAttribute('inert', !open);   // keep hidden field out of tab order
+        $('notesCollapse').firstElementChild.toggleAttribute('inert', !open);
         if (!open) setError('notes', 'notesError', '');
     }
 
@@ -403,7 +613,6 @@
         toggleNotes();
     }
 
-    // Native <dialog> confirmation (focus trap, Esc, backdrop click). Falls back to confirm().
     function confirmDeduction(staff, iso) {
         const dlg = $('confirmDialog');
         const text = `${DEDUCTION_PERCENT}% will be deducted from ${staff}'s attendance score for ${fmtDate(iso)}. This action is recorded in the audit log.`;
@@ -416,9 +625,63 @@
         });
     }
 
-    /* =====================================================
-       FORM: VALIDATE + SAVE TO LARAVEL MYSQL
-    ===================================================== */
+    window.processPendingLeave = async function (leaveId, decision, btnEl) {
+        const req = pendingRequests.find(r => Number(r.id) === Number(leaveId));
+        if (!req) return;
+
+        if (decision === 'rejected' && !(await confirmDeduction(req.staff, req.leaveDate))) {
+            return;
+        }
+
+        const card = document.getElementById(`pending-req-${leaveId}`);
+        card?.querySelectorAll('button').forEach(b => b.disabled = true);
+
+        try {
+            const response = await fetch(OVERRIDE_URL, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    leave_id:   req.id,
+                    worker_id:  req.worker_id,
+                    staff:      req.staff,
+                    department: req.department,
+                    leaveDate:  req.leaveDate,
+                    reason:     req.reason,
+                    notes:      req.notes || '',
+                    status:     decision
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || 'Failed to update request.');
+            }
+
+            pendingRequests = pendingRequests.filter(r => Number(r.id) !== Number(leaveId));
+            auditLogs.unshift(result.record);
+            currentFilter = 'all';
+
+            renderPendingRequests();
+            renderAuditLogs({ newId: result.record.id });
+
+            if (typeof window.refreshHrBellNotifications === 'function') {
+                window.refreshHrBellNotifications();
+            }
+
+            toast(`${req.staff}: ${decision === 'approved' ? 'Emergency leave approved (No deduction)' : `Rejected (-${DEDUCTION_PERCENT}% attendance deducted)`}.`);
+        } catch (err) {
+            console.error(err);
+            card?.querySelectorAll('button').forEach(b => b.disabled = false);
+            toast(err.message || 'Could not process request.', 'error');
+        }
+    };
+
     function validateForm() {
         clearErrors();
         const staff = $('staff'), date = $('leaveDate'), notes = $('notes');
@@ -430,18 +693,18 @@
         else if (date.value > todayISO()) fail(date, 'dateError', 'Leave date cannot be in the future.');
         else if (staff.value) {
             const selectedOption = staff.options ? staff.options[staff.selectedIndex] : null;
-            const selectedWorkerId = selectedOption?.dataset?.workerId || staff.dataset?.workerId || '';
+            const selectedWorkerId = selectedOption?.dataset?.workerId || '';
 
             const isDuplicate = auditLogs.some(l => {
                 const logWorkerId = l.worker_id || l.workerId;
                 const sameStaff = (logWorkerId && selectedWorkerId)
                     ? String(logWorkerId) === String(selectedWorkerId)
-                    : (l.staff === staff.value || (logWorkerId && String(logWorkerId) === String(staff.value)));
+                    : (l.staff === staff.value);
                 return sameStaff && l.leaveDate === date.value;
             });
 
             if (isDuplicate) {
-                fail(date, 'dateError', `${staff.value} already has a record for ${fmtDate(date.value)}.`);
+                fail(date, 'dateError', `${staff.value} already has a finalized record for ${fmtDate(date.value)}.`);
             }
         }
         if ($('reason').value === 'Other' && !notes.value.trim()) fail(notes, 'notesError', 'Please describe the reason.');
@@ -467,7 +730,6 @@
             impact: impactLabel(status)
         };
 
-        // A deduction changes someone's score: ask before applying it
         if (status === 'rejected' && !(await confirmDeduction(payload.staff, payload.leaveDate))) return;
 
         btn.classList.add('loading'); btn.disabled = true; btn.setAttribute('aria-busy', 'true');
@@ -492,9 +754,16 @@
             const result = await response.json();
             const savedRecord = result.record;
 
-            auditLogs.unshift(savedRecord);         // newest first
-            currentFilter = 'all';                  // make sure the new entry is visible
+            pendingRequests = pendingRequests.filter(r => !(String(r.worker_id) === String(savedRecord.worker_id) && r.leaveDate === savedRecord.leaveDate));
+            auditLogs.unshift(savedRecord);
+            currentFilter = 'all';
+
+            renderPendingRequests();
             renderAuditLogs({ newId: savedRecord.id });
+
+            if (typeof window.refreshHrBellNotifications === 'function') {
+                window.refreshHrBellNotifications();
+            }
 
             msg.innerHTML = icon('check') + 'Attendance adjustment saved successfully.';
             msg.className = 'override-message success';
@@ -513,10 +782,6 @@
         msg._t = setTimeout(() => { msg.className = 'override-message'; }, 3500);
     }
 
-    /* =====================================================
-       ACCESSIBILITY: aria-expanded sync + Escape closes dropdowns
-       (open/close itself stays in session.js)
-    ===================================================== */
     function initDropdownA11y() {
         [['notificationBtn', 'notificationDropdown'], ['profileBtn', 'profileDropdown']].forEach(([b, d]) => {
             const btn = $(b), dd = $(d);
@@ -530,14 +795,11 @@
         });
     }
 
-    /* =====================================================
-       INIT
-    ===================================================== */
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.deduct-pct').forEach(el => { el.textContent = DEDUCTION_PERCENT; });
 
         $('leaveDate').value = todayISO();
-        $('leaveDate').max = todayISO();            // overrides are retroactive, never future-dated
+        $('leaveDate').max = todayISO();
 
         $('overrideForm').addEventListener('submit', e => { e.preventDefault(); saveAdjustment(); });
         $('staff').addEventListener('change', showDepartment);
@@ -554,13 +816,98 @@
         }));
         $('confirmDialog').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
 
+        const reviewId = new URLSearchParams(window.location.search).get('review_id');
         toggleNotes();
+        renderPendingRequests(reviewId);
         renderAuditLogs({ animateAll: true });
         initDropdownA11y();
     });
     </script>
-<script src="{{ asset('session.js') }}?v=8"></script>
+
+    <script src="{{ asset('session.js') }}?v=8"></script>
+
+    <!-- LIVE HR NOTIFICATION BELL SYNC -->
+    <script>
+    (() => {
+        function syncBellBadge(count) {
+            const badge = document.getElementById('notifBadge');
+            if (!badge) return;
+            if (count > 0) {
+                badge.textContent = count > 9 ? '9+' : String(count);
+                badge.style.setProperty('display', 'flex', 'important');
+            } else {
+                badge.style.setProperty('display', 'none', 'important');
+            }
+        }
+
+        function renderHrNotifications(items) {
+            const list = document.getElementById('notificationList');
+            const rows = Array.isArray(items) ? items : [];
+            syncBellBadge(rows.length);
+
+            if (!list) return;
+            if (!rows.length) {
+                list.innerHTML = `
+                    <div class="no-notifications" id="emptyState">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        <p>No pending emergency leave requests</p>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = rows.map(it => `
+                <a href="${EMER_URL}?review_id=${encodeURIComponent(it.id)}"
+                   class="hr-notif-item unread"
+                   data-el-id="${it.id}">
+                    <span class="hr-notif-dot" aria-hidden="true"></span>
+                    <div class="hr-notif-body">
+                        <div class="hr-notif-title">Emergency Leave: ${esc(it.staff)}</div>
+                        <div class="hr-notif-meta">
+                            <strong>${esc(it.department)}</strong> &bull; ${esc(it.leaveLabel || fmtDate(it.leaveDate))}<br>
+                            Reason: ${esc(it.reason)}
+                        </div>
+                        <span class="hr-notif-time">${esc(it.timeAgo || it.submittedAt || 'Pending review')} &bull; Click to review</span>
+                    </div>
+                </a>`).join('');
+        }
+
+        async function fetchHrNotifications() {
+            // Papar terus dari data halaman semasa supaya tidak kosong sementara fetch
+            if (typeof pendingRequests !== 'undefined' && Array.isArray(pendingRequests)) {
+                renderHrNotifications(pendingRequests);
+            }
+
+            try {
+                const res = await fetch(NOTIF_API, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.status === 'success') {
+                    renderHrNotifications(data.items || []);
+                }
+            } catch (err) {
+                console.warn('HR Notification fetch warning:', err);
+            }
+        }
+
+        window.refreshHrBellNotifications = fetchHrNotifications;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchHrNotifications();
+            // Jalankan semula selepas session.js selesai pada window.load & klik loceng
+            window.addEventListener('load', () => setTimeout(fetchHrNotifications, 150));
+            document.getElementById('notificationBtn')?.addEventListener('click', () => {
+                setTimeout(fetchHrNotifications, 50);
+            });
+            setInterval(fetchHrNotifications, 30000);
+        });
+    })();
+    </script>
 
 </body>
-
 </html>

@@ -47,6 +47,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/worker/profile', [FypController::class, 'workerProfile'])->name('worker.dashboard');
         Route::post('/worker/profile/photo', [FypController::class, 'updateProfilePhoto'])->name('worker.photo.update');
 
+    // Emergency leave
+        Route::post('/worker/emergency-leave', [App\Http\Controllers\FypController::class, 'submitWorkerEmergencyLeave'])
+            ->name('worker.emergency-leave.store');
+
+    // Notifikasi worker
+        Route::post('/worker/notifications/read', [FypController::class, 'markWorkerNotificationsRead'])
+            ->name('worker.notifications.read');
+
     // Khas untuk HR sahaja (Worker & Leader akan dapat 403 jika cuba masuk)
     Route::middleware(['role:HR'])->group(function () {
         Route::get('/hr/dashboard', [FypController::class, 'hrDashboard'])->name('hr.dashboard');
@@ -64,6 +72,12 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/hr/ai/refresh', [FypController::class, 'refreshAiInsights'])->name('hr.ai.refresh');
         Route::post('/hr/ai/reminder-draft', [FypController::class, 'generateAiReminderDraft'])->name('hr.ai.reminder');
+
+        //Bahagian untuk Emergency Leave
+
+        Route::get('/hr/emergency-leave', [FypController::class, 'emerLeave'])->name('hr.emerleave');
+        Route::post('/hr/emergency-leave/override', [FypController::class, 'storeEmerLeave'])->name('hr.emerleave.store');
+        Route::get('/hr/notifications', [FypController::class, 'getHrNotifications'])->name('hr.notifications');
         
     });
 

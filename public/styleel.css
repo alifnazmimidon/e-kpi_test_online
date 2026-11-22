@@ -479,6 +479,112 @@ button { touch-action: manipulation; }
     .save-adjustment { width: 100%; justify-content: center; }
 }
 
+
+/* CSS UNTUK KAD EMERGENCY LEAVE */
+
+.pending-requests-card {
+    background: #ffffff;
+    border: 1.5px solid #fecaca;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 24px rgba(127, 0, 0, 0.06);
+}
+.pending-requests-header {
+    background: linear-gradient(135deg, #7f0000, #991b1b);
+    color: #ffffff;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.pending-requests-header h2 {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.pending-badge-count {
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+.pending-list-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.pending-req-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: #fffafa;
+    transition: all 0.25s ease;
+}
+.pending-req-item.highlighted {
+    border-color: #dc2626;
+    background: #fef2f2;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+.pri-info { flex: 1; min-width: 240px; }
+.pri-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+.pri-name { font-size: 0.96rem; font-weight: 700; color: #0f172a; }
+.pri-dept {
+    background: #fee2e2;
+    color: #991b1b;
+    font-size: 0.73rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+.pri-time { font-size: 0.75rem; color: #64748b; }
+.pri-details { font-size: 0.85rem; color: #334155; }
+.pri-notes {
+    margin-top: 6px;
+    font-size: 0.8rem;
+    color: #475569;
+    background: #ffffff;
+    border-left: 3px solid #991b1b;
+    padding: 5px 10px;
+    border-radius: 0 6px 6px 0;
+}
+.pri-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pri-btn-approve {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px; border: none;
+    background: #16a34a; color: #ffffff;
+    font-size: 0.83rem; font-weight: 600; cursor: pointer;
+}
+.pri-btn-approve:hover { background: #15803d; }
+.pri-btn-reject {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #fecaca;
+    background: #fef2f2; color: #b91c1c;
+    font-size: 0.83rem; font-weight: 600; cursor: pointer;
+}
+.pri-btn-reject:hover { background: #fee2e2; }
+.pri-btn-approve:disabled, .pri-btn-reject:disabled { opacity: 0.6; cursor: not-allowed; }
+
+
+
 /* =====================================================
    REDUCED MOTION - final states render immediately
 ===================================================== */

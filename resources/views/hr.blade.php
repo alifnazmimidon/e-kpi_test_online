@@ -593,6 +593,146 @@
     });
 </script>
 <script src="{{ asset('session.js') }}?v=8"></script>
+<style>
+    .hr-notif-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        text-decoration: none;
+        color: #0f172a;
+        transition: background 0.15s ease;
+        cursor: pointer;
+    }
+    .hr-notif-item:hover { background: #fff5f5; }
+    .hr-notif-item.unread { background: #fef2f2; }
+    .hr-notif-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #dc2626;
+        margin-top: 6px;
+        flex-shrink: 0;
+    }
+    .hr-notif-item:not(.unread) .hr-notif-dot { background: #cbd5e1; }
+    .hr-notif-body { flex: 1; min-width: 0; }
+    .hr-notif-title {
+        font-size: 0.84rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 2px;
+    }
+    .hr-notif-meta {
+        font-size: 0.78rem;
+        color: #475569;
+        line-height: 1.35;
+    }
+    .hr-notif-time {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        margin-top: 4px;
+        display: block;
+    }
+</style>
+
+<script>
+(() => {
+    const NOTIF_API = @json(route('hr.notifications'));
+    const EMER_URL  = @json(route('hr.emerleave'));
+    const SEEN_KEY  = 'ekpi_hr_seen_el_ids';
+
+    const getSeenIds = () => {
+        try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]').map(Number); }
+        catch { return []; }
+    };
+    const saveSeenIds = (ids) => {
+        localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set(ids.map(Number))]));
+    };
+
+    let latestNotifItems = [];
+
+    function renderHrNotifications(items) {
+        latestNotifItems = Array.isArray(items) ? items : [];
+        const badge = document.getElementById('notifBadge');
+        const list  = document.getElementById('notificationList');
+        if (!badge || !list) return;
+
+        const seenIds = getSeenIds();
+        const unreadCount = latestNotifItems.filter(it => !seenIds.includes(Number(it.id))).length;
+
+        if (unreadCount > 0) {
+            badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+            badge.style.setProperty('display', 'flex', 'important');
+        } else {
+            badge.style.display = 'none';
+        }
+
+        if (!latestNotifItems.length) {
+            list.innerHTML = `
+                <div class="no-notifications" id="emptyState">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <p>No new emergency leave requests</p>
+                </div>`;
+            return;
+        }
+
+        list.innerHTML = latestNotifItems.map(it => {
+            const isUnread = !seenIds.includes(Number(it.id));
+            return `
+                <a href="${EMER_URL}?review_id=${encodeURIComponent(it.id)}"
+                   class="hr-notif-item ${isUnread ? 'unread' : ''}"
+                   data-el-id="${it.id}">
+                    <span class="hr-notif-dot" aria-hidden="true"></span>
+                    <div class="hr-notif-body">
+                        <div class="hr-notif-title">Emergency Leave: ${esc(it.staff)}</div>
+                        <div class="hr-notif-meta">
+                            <strong>${esc(it.department)}</strong> &bull; ${esc(it.leaveLabel)}<br>
+                            Reason: ${esc(it.reason)}
+                        </div>
+                        <span class="hr-notif-time">${esc(it.timeAgo)} &bull; Click to review</span>
+                    </div>
+                </a>`;
+        }).join('');
+
+        list.querySelectorAll('.hr-notif-item').forEach(link => {
+            link.addEventListener('click', () => {
+                const id = Number(link.dataset.elId);
+                saveSeenIds([...getSeenIds(), id]);
+            });
+        });
+    }
+
+    async function fetchHrNotifications() {
+        try {
+            const res = await fetch(NOTIF_API, {
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.status === 'success') {
+                renderHrNotifications(data.items || []);
+            }
+        } catch (err) {
+            console.warn('HR Notification fetch warning:', err);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(fetchHrNotifications, 120);
+        setInterval(fetchHrNotifications, 30000);
+
+        document.getElementById('markAllRead')?.addEventListener('click', () => {
+            saveSeenIds([...getSeenIds(), ...latestNotifItems.map(i => Number(i.id))]);
+            renderHrNotifications(latestNotifItems);
+        });
+    });
+})();
+</script>
 </body>
 
 <!-- AI EMAIL REMINDER MODAL -->

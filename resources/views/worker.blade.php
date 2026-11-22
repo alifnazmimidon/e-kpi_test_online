@@ -22,6 +22,232 @@
             if (svg) svg.style.display = 'block';
         }
     </script>
+
+    <style>
+        .emergency-leave-trigger-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            margin-top: 10px;
+            padding: 11px 16px;
+            border-radius: 10px;
+            border: 1.5px solid #8b0000;
+            background: #ffffff;
+            color: #8b0000;
+            font-weight: 600;
+            font-size: 0.92rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .emergency-leave-trigger-btn:hover {
+            background: #fff5f5;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 0, 0, 0.12);
+        }
+        .el-pending-pill {
+            background: #fef3c7;
+            color: #92400e;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid #f59e0b;
+        }
+        .el-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(3px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 9999;
+        }
+        .el-modal-backdrop.active {
+            display: flex;
+        }
+        .el-modal-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 560px;
+            max-height: 92vh;
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+            animation: elPopIn 0.2s ease-out;
+        }
+        @keyframes elPopIn {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .el-modal-header {
+            background: linear-gradient(135deg, #7f0000, #991b1b);
+            color: #ffffff;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .el-modal-header h3 {
+            margin: 0;
+            font-size: 1.08rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .el-modal-close {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: #ffffff;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+        }
+        .el-modal-close:hover { background: rgba(255, 255, 255, 0.28); }
+        .el-modal-tabs {
+            display: flex;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+            padding: 0 20px;
+            gap: 16px;
+        }
+        .el-tab-btn {
+            padding: 11px 4px;
+            border: none;
+            background: transparent;
+            font-weight: 600;
+            font-size: 0.88rem;
+            color: #64748b;
+            border-bottom: 2.5px solid transparent;
+            cursor: pointer;
+        }
+        .el-tab-btn.active {
+            color: #8b0000;
+            border-bottom-color: #8b0000;
+        }
+        .el-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .el-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .el-form-group {
+            margin-bottom: 14px;
+        }
+        .el-form-group label {
+            display: block;
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+        .el-input, .el-select, .el-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #0f172a;
+            background: #ffffff;
+            box-sizing: border-box;
+        }
+        .el-input[readonly] {
+            background: #f1f5f9;
+            color: #475569;
+            cursor: not-allowed;
+        }
+        .el-input:focus, .el-select:focus, .el-textarea:focus {
+            outline: none;
+            border-color: #8b0000;
+            box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.1);
+        }
+        .el-notes-wrapper {
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.2s ease;
+            margin-bottom: 0;
+        }
+        .el-notes-wrapper.open {
+            max-height: 180px;
+            opacity: 1;
+            margin-bottom: 14px;
+        }
+        .el-char-count {
+            text-align: right;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .el-modal-footer {
+            padding: 14px 20px;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .el-btn-cancel {
+            padding: 9px 16px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #475569;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .el-btn-submit {
+            padding: 9px 18px;
+            border-radius: 8px;
+            border: none;
+            background: #8b0000;
+            color: #ffffff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .el-btn-submit:hover { background: #700000; }
+        .el-btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .el-history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .el-history-table th {
+            text-align: left;
+            padding: 8px 10px;
+            background: #f1f5f9;
+            color: #334155;
+            font-weight: 600;
+        }
+        .el-history-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+        .el-badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .el-badge.pending  { background: #fef3c7; color: #92400e; }
+        .el-badge.approved { background: #dcfce7; color: #166534; }
+        .el-badge.rejected { background: #fee2e2; color: #991b1b; }
+    </style>
 </head>
 
 <body>
@@ -60,7 +286,6 @@
         $workerCode  = $currentUser->worker_id ?? 'ILM1234';
         $deptName    = $currentUser->department->department_name ?? ($currentUser->department_name ?? 'General');
 
-        // Selesaikan senarai jawatan (sokong sama ada string tunggal atau array/JSON)
         $positionsList = [];
         if (!empty($currentUser->positions)) {
             if (is_string($currentUser->positions)) {
@@ -71,10 +296,8 @@
             }
         }
 
-        // Buang nilai kosong atau string '[]'
         $positionsList = array_values(array_filter($positionsList, fn($p) => is_string($p) && trim($p) !== '' && trim($p) !== '[]'));
 
-        // Jika tiada sejarah dalam kolum positions, gunakan kolum asal designation / position
         if (empty($positionsList)) {
             $fallbackRole = $currentUser->designation ?? $currentUser->position ?? null;
             if (!empty($fallbackRole)) {
@@ -83,7 +306,6 @@
         }
         $latestPosition = count($positionsList) ? end($positionsList) : 'Programmer';
 
-        // Selesaikan URL gambar profil (mendukung folder public/uploads/ maupun storage/avatars/)
         $rawPhoto = $currentUser->profile_photo ?? $currentUser->profile_pic_url ?? '';
         $photoUrl = '';
         if (!empty($rawPhoto)) {
@@ -97,7 +319,6 @@
             }
         }
 
-        // Selesaikan pautan Edit Profile & Dashboard mengikut peranan (HR, LEADER, atau STAFF)
         $editProfileUrl = Route::has('profile.edit')
             ? route('profile.edit')
             : url('/profile');
@@ -131,19 +352,50 @@
                 </button>
 
                 <div class="notification-dropdown" id="notificationDropdown">
-                    <div class="notification-header">
-                        <h3>Notifications</h3>
-                        <button type="button" class="mark-read" id="markAllRead">Mark all as read</button>
+                   @php
+            $unreadNotifCount = collect($workerNotifications ?? [])->where('is_read', false)->count();
+        @endphp
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #e2e8f0; background:#ffffff;">
+            <span style="font-weight:700; font-size:0.9rem; color:#0f172a;">Notifications</span>
+            <button type="button" id="markAllNotificationsRead" data-mark-all-read
+                    style="background:none; border:none; color:#64748b; font-size:0.78rem; font-weight:600; cursor:pointer; padding:0;">
+                Mark all as read
+            </button>
+        </div>
+
+        <div id="workerNotifList" style="max-height: 320px; overflow-y: auto;">
+            @forelse(($workerNotifications ?? []) as $notif)
+                @php
+                    $catColors = [
+                        'leave'   => ['bg' => '#fef2f2', 'text' => '#b91c1c', 'label' => 'Leave / HR'],
+                        'task'    => ['bg' => '#eff6ff', 'text' => '#1d4ed8', 'label' => 'Job Report'],
+                        'kpi'     => ['bg' => '#f0fdf4', 'text' => '#15803d', 'label' => 'KPI Score'],
+                        'profile' => ['bg' => '#faf5ff', 'text' => '#7e22ce', 'label' => 'Position'],
+                    ];
+                    $badgeStyle = $catColors[$notif['category']] ?? ['bg' => '#f1f5f9', 'text' => '#334155', 'label' => 'Update'];
+                @endphp
+                <div class="wn-item {{ $notif['is_read'] ? 'is-read' : 'is-unread' }}"
+                    style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; background: {{ $notif['is_read'] ? '#ffffff' : '#fffbeb' }}; text-align: left;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <span style="font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:999px; background:{{ $badgeStyle['bg'] }}; color:{{ $badgeStyle['text'] }};">
+                            {{ $badgeStyle['label'] }}
+                        </span>
+                        <span style="font-size:0.72rem; color:#94a3b8;">{{ $notif['time_ago'] }}</span>
                     </div>
-                    <div class="notification-list" id="notificationList" aria-live="polite">
-                        <div class="no-notifications" id="emptyState">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                            </svg>
-                            <p>No new notifications</p>
+                    <div style="font-size:0.84rem; font-weight:700; color:#1e293b; margin-bottom:2px;">
+                        {{ $notif['title'] }}
+                    </div>
+                    <div style="font-size:0.79rem; color:#475569; line-height:1.35;">
+                        {{ $notif['message'] }}
+                    </div>
+                </div>
+                    @empty
+                        <div style="padding: 28px 16px; text-align: center; color: #94a3b8; font-size: 0.85rem;">
+                            No new notifications
                         </div>
-                    </div>
+                    @endforelse
+                </div>
                 </div>
             </div>
 
@@ -240,6 +492,12 @@
             <a href="{{ $editProfileUrl }}" class="edit-profile-button">
                 <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Edit Profile
             </a>
+
+            <button type="button" class="emergency-leave-trigger-btn" id="openEmergencyLeaveModalBtn">
+                <svg class="icon" aria-hidden="true"><use href="#i-alert-circle"/></svg>
+                <span>Request Emergency Leave</span>
+                <span class="el-pending-pill" id="elPendingBadge" style="display: none;">0 Pending</span>
+            </button>
         </section>
 
         <!-- ========== RIGHT CONTENT ========== -->
@@ -320,6 +578,86 @@
         </section>
     </main>
 
+    <!-- ==================== EMERGENCY LEAVE POPUP MODAL ==================== -->
+    <div class="el-modal-backdrop" id="emergencyLeaveModal" role="dialog" aria-modal="true" aria-labelledby="elModalTitle">
+        <div class="el-modal-card">
+            <div class="el-modal-header">
+                <h3 id="elModalTitle">
+                    <svg class="icon" aria-hidden="true"><use href="#i-alert-circle"/></svg>
+                    Emergency Leave Request
+                </h3>
+                <button type="button" class="el-modal-close" id="closeEmergencyLeaveModalBtn" aria-label="Close modal">
+                    <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+                </button>
+            </div>
+
+            <div class="el-modal-tabs">
+                <button type="button" class="el-tab-btn active" data-el-tab="form">New Request</button>
+                <button type="button" class="el-tab-btn" data-el-tab="history">
+                    My History (<span id="elHistoryCount">0</span>)
+                </button>
+            </div>
+
+            <!-- TAB 1: BORANG PERMOHONAN -->
+            <form id="emergencyLeaveForm" style="display: flex; flex-direction: column; overflow: hidden;">
+                <div class="el-modal-body">
+                    <div class="el-form-row">
+                        <div class="el-form-group" style="margin-bottom: 0;">
+                            <label for="elWorkerName">Worker Name</label>
+                            <input type="text" id="elWorkerName" class="el-input" value="{{ $displayName }} ({{ $workerCode }})" readonly>
+                        </div>
+                        <div class="el-form-group" style="margin-bottom: 0;">
+                            <label for="elDepartment">Department</label>
+                            <input type="text" id="elDepartment" class="el-input" value="{{ $deptName }}" readonly>
+                        </div>
+                    </div>
+
+                    <div class="el-form-group">
+                        <label for="elLeaveDate">Emergency Leave Date <span style="color:#dc2626;">*</span></label>
+                        <input type="date" id="elLeaveDate" name="leave_date" class="el-input" max="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}" required>
+                    </div>
+
+                    <div class="el-form-group">
+                        <label for="elReason">Emergency Reason <span style="color:#dc2626;">*</span></label>
+                        <select id="elReason" name="reason" class="el-select" required>
+                            <option value="" disabled selected>-- Select emergency reason --</option>
+                            <option value="Medical / Hospitalization">Medical / Hospitalization</option>
+                            <option value="Family Emergency">Family Emergency</option>
+                            <option value="Accident / Vehicle Breakdown">Accident / Vehicle Breakdown</option>
+                            <option value="Natural Disaster">Natural Disaster</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="el-notes-wrapper" id="elNotesWrapper">
+                        <label for="elNotes" style="display:block; font-size:0.83rem; font-weight:600; color:#334155; margin-bottom:6px;">
+                            Additional Notes <span style="color:#dc2626;">*</span>
+                        </label>
+                        <textarea id="elNotes" name="notes" class="el-textarea" rows="3" maxlength="200" placeholder="Please specify details (max 200 characters)..."></textarea>
+                        <div class="el-char-count"><span id="elNotesCount">0</span> / 200</div>
+                    </div>
+                </div>
+
+                <div class="el-modal-footer">
+                    <button type="button" class="el-btn-cancel" id="cancelEmergencyLeaveBtn">Cancel</button>
+                    <button type="submit" class="el-btn-submit" id="submitEmergencyLeaveBtn">Submit to HR</button>
+                </div>
+            </form>
+
+            <!-- TAB 2: SEJARAH & STATUS KELULUSAN HR -->
+            <div id="emergencyLeaveHistoryPane" style="display: none; flex-direction: column; overflow: hidden;">
+                <div class="el-modal-body">
+                    <div class="el-history-list" id="elHistoryList">
+                        <div style="text-align:center; color:#64748b; padding:24px;">No emergency leave records yet.</div>
+                    </div>
+                </div>
+                <div class="el-modal-footer">
+                    <button type="button" class="el-btn-cancel" id="closeHistoryPaneBtn">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
     <!-- LARAVEL SEED DATA (LIVE MYSQL PAYLOAD) -->
@@ -336,59 +674,56 @@
             ];
         })->values()->all();
 
-           $workerSeedPayload = [
-            'name'            => $displayName,
-            'workerId'        => $workerCode,
-            'department'      => $deptName,
-            'profile_pic_url' => $photoUrl,
-            'positions'       => array_values($positionsList),
-            'kpi'             => [
+        $workerSeedPayload = [
+            'name'             => $displayName,
+            'workerId'         => $workerCode,
+            'department'       => $deptName,
+            'profile_pic_url'  => $photoUrl,
+            'positions'        => array_values($positionsList),
+            'kpi'              => [
                 'current'    => (float) ($kpiScores->user_score ?? 0),
                 'department' => (float) ($kpiScores->dept_score ?? 0),
                 'company'    => (float) ($kpiScores->company_score ?? 0),
             ],
-            'thresholds'      => isset($setting) ? [
+            'thresholds'       => isset($setting) ? [
                 'gold'   => (int) ($setting->gold_threshold ?? 90),
                 'silver' => (int) ($setting->silver_threshold ?? 85),
                 'bronze' => (int) ($setting->bronze_threshold ?? 80),
             ] : null,
-            'job_reports'     => $mappedJobs,
+            'job_reports'      => $mappedJobs,
+            'emergency_leaves' => $emergencyLeaves ?? [],
         ];
     ?>
     <script type="application/json" id="laravelWorkerSeed">
         <?php echo json_encode($workerSeedPayload, JSON_HEX_TAG); ?>
     </script>
 
- 
-
     <script>
+        let workerLeaveHistory = @json($emergencyLeaves ?? []);
         (() => {
-    /* =====================================================
-       HELPERS
-    ===================================================== */
-    const $ = id => document.getElementById(id);
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const icon = (name, cls = '') => `<svg class="icon ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
-    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&': '\x26amp;',
-    '<': '\x26lt;',
-    '>': '\x26gt;',
-    '"': '\x26quot;',
-    "'": '\x26#39;'
-    }[c]));
-    function todayISO() {
-        const d = new Date(), p = n => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-    }
-    const fmtDate = iso => {
-        if (!iso || !String(iso).includes('-')) return '-';
-        const [y, m, d] = String(iso).split('-');
-        return d && m && y ? `${d}/${m}/${y}` : iso;
-    };
-    const dayNumber = iso => {
-        const [y, m, d] = String(iso).split('-').map(Number);
-        return Date.UTC(y, m - 1, d) / 86400000;
-    };
+        const $ = id => document.getElementById(id);
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const icon = (name, cls = '') => `<svg class="icon ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({
+            '&': '\x26amp;',
+            '<': '\x26lt;',
+            '>': '\x26gt;',
+            '"': '\x26quot;',
+            "'": '\x26#39;'
+        }[c]));
+        function todayISO() {
+            const d = new Date(), p = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+        }
+        const fmtDate = iso => {
+            if (!iso || !String(iso).includes('-')) return '-';
+            const [y, m, d] = String(iso).split('-');
+            return d && m && y ? `${d}/${m}/${y}` : iso;
+        };
+        const dayNumber = iso => {
+            const [y, m, d] = String(iso).split('-').map(Number);
+            return Date.UTC(y, m - 1, d) / 86400000;
+        };
 
     function animateCount(el, to, { suffix = '%', duration = 1000 } = {}) {
         const from = parseFloat(el.dataset.val) || 0;
@@ -427,9 +762,6 @@
         };
     }
 
-    /* =====================================================
-       READ LARAVEL SEED PAYLOAD
-    ===================================================== */
     function readSeedData(doc = document) {
         const raw = doc.getElementById('laravelWorkerSeed')?.textContent?.trim();
         if (!raw) throw new Error('Seed payload not found');
@@ -443,9 +775,6 @@
         console.warn('Worker seed parse warning:', e);
     }
 
-    /* =====================================================
-       SYNC STATUS (live relative time + manual refresh)
-    ===================================================== */
     let lastSync = null, syncState = 'idle';
 
     function relTime(ts) {
@@ -465,9 +794,6 @@
         $('syncBtn').setAttribute('aria-label', syncState === 'error' ? 'Retry sync' : 'Refresh data');
     }
 
-    /* =====================================================
-       KPI: badge tier (reads DB thresholds or localStorage)
-    ===================================================== */
     let dbThresholds = initialSeed?.thresholds || null;
 
     function getThresholds() {
@@ -508,9 +834,6 @@
         else setChip(id, d > 0 ? 'up' : 'down', d > 0 ? 'arrow-up' : 'arrow-down', `You: ${Math.abs(d)} pts ${d > 0 ? 'above' : 'below'}`);
     }
 
-    /* =====================================================
-       JOB REPORT: filter / search / sort
-    ===================================================== */
     const STATUS = {
         'in-progress': { label: 'In Progress', icon: 'clock', order: 0 },
         'pending':     { label: 'Pending',     icon: 'hourglass', order: 1 },
@@ -576,13 +899,9 @@
         $('positionsContainer').innerHTML = '<span class="skel block"></span><span class="skel block"></span>';
     }
 
-    /* =====================================================
-       RENDER WORKER PAGE WITH MYSQL DATA
-    ===================================================== */
     function renderWorkerPageUI(data) {
         if (data.thresholds) dbThresholds = data.thresholds;
 
-        // 1. Text
         $('workerName').textContent = data.name || 'Nama Pekerja';
         $('workerId').textContent = data.workerId || 'ILM0000';
         $('dropdownUserName').textContent = data.name || 'User';
@@ -591,7 +910,6 @@
         const latestRole = positions.length ? positions[positions.length - 1] : 'Staff';
         $('dropdownUserRole').textContent = latestRole;
 
-        // 2. Profile picture
         const url = (data.profile_pic_url || '').trim();
         if (url) {
             [['headerUserProfilePic', 'defaultAvatarSvg'], ['cardUserProfilePic', 'cardDefaultAvatarSvg']].forEach(([i, s]) => {
@@ -602,7 +920,6 @@
             window.showHeaderAvatarFallback(); showCardAvatarFallback();
         }
 
-        // Segerakkan dengan EKPI_Session (session.js) supaya tidak ditimpa data default
         if (typeof EKPI_Session !== 'undefined' && typeof EKPI_Session.updateUserSession === 'function') {
             EKPI_Session.updateUserSession({
                 id: data.workerId,
@@ -614,7 +931,6 @@
             });
         }
 
-        // 3. Positions: newest first; the last item of the array is the current role
         const pos = $('positionsContainer');
         if (positions.length) {
             const lastIdx = positions.length - 1;
@@ -630,7 +946,6 @@
             pos.innerHTML = '<span class="no-pos-text">Tiada Jawatan</span>';
         }
 
-        // 4. KPI
         const kpi = data.kpi || { current: 0, department: 0, company: 0 };
         const cur = setKpi('kpiCurrent', kpi.current);
         const dep = setKpi('kpiDept', kpi.department);
@@ -640,14 +955,14 @@
         compareChip('kpiDeptChip', cur, dep, 'dept');
         compareChip('kpiCompanyChip', cur, com, 'company');
 
-        // 5. Job report
         jobs = Array.isArray(data.job_reports) ? data.job_reports : [];
         renderJobs();
+
+        if (typeof window.renderEmergencyLeaves === 'function') {
+            window.renderEmergencyLeaves(Array.isArray(data.emergency_leaves) ? data.emergency_leaves : []);
+        }
     }
 
-    /* =====================================================
-       LIVE LARAVEL MYSQL FETCH & REFRESH HOOK
-    ===================================================== */
     let firstLoad = true;
     async function fetchWorkerProfileFromBackend() {
         if (syncState === 'loading') return;
@@ -656,7 +971,6 @@
         try {
             let data;
             if (firstLoad && initialSeed) {
-                // Muatan pertama terus guna data Laravel MySQL dari Blade
                 data = initialSeed;
             } else {
                 renderSkeleton();
@@ -696,9 +1010,6 @@
         }
     }
 
-    /* =====================================================
-       INTERACTIONS
-    ===================================================== */
     async function copyWorkerId() {
         const id = $('workerId').textContent.trim(), btn = $('copyIdBtn');
         try {
@@ -721,7 +1032,6 @@
     }
 
     function initInteractions() {
-
         const photoInput = $('workerPhotoInput');
         if (photoInput) {
             photoInput.addEventListener('change', async (e) => {
@@ -748,7 +1058,6 @@
                         throw new Error(data.message || 'Upload gagal');
                     }
 
-                    // Kemas kini gambar di kad profil & header serta-merta
                     [['headerUserProfilePic', 'defaultAvatarSvg'], ['cardUserProfilePic', 'cardDefaultAvatarSvg']].forEach(([imgId, svgId]) => {
                         if ($(imgId)) { $(imgId).src = data.photo_url; $(imgId).style.display = 'block'; }
                         if ($(svgId)) $(svgId).style.display = 'none';
@@ -767,6 +1076,150 @@
                 }
             });
         }
+
+        // === EMERGENCY LEAVE MODAL & SUBMIT ===
+        const elModal      = $('emergencyLeaveModal');
+        const elForm       = $('emergencyLeaveForm');
+        const elHistory    = $('emergencyLeaveHistoryPane');
+        const elReason     = $('elReason');
+        const elNotesWrap  = $('elNotesWrapper');
+        const elNotes      = $('elNotes');
+        const elNotesCount = $('elNotesCount');
+        const elSubmitBtn  = $('submitEmergencyLeaveBtn');
+
+        window.renderEmergencyLeaves = function (list) {
+            const items = Array.isArray(list) ? list : [];
+            const pendingCount = items.filter(x => String(x.status).toUpperCase() === 'PENDING').length;
+
+            const badge = $('elPendingBadge');
+            if (badge) {
+                badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+                badge.textContent = `${pendingCount} Pending`;
+            }
+            if ($('elHistoryCount')) $('elHistoryCount').textContent = items.length;
+
+            const listBox = $('elHistoryList');
+            if (!listBox) return;
+            if (!items.length) {
+                listBox.innerHTML = '<div style="text-align:center; color:#64748b; padding:24px;">No emergency leave records yet.</div>';
+                return;
+            }
+            listBox.innerHTML = items.map(item => {
+                const st = String(item.status || 'PENDING').toUpperCase();
+                const cls = st === 'APPROVED' ? 'approved' : (st === 'REJECTED' ? 'rejected' : 'pending');
+                const impactColor = st === 'REJECTED' ? '#dc2626' : (st === 'APPROVED' ? '#16a34a' : '#d97706');
+
+                const rawImpact = String(item.impact || '').trim();
+                const impactLabel = st === 'PENDING'
+                    ? 'Pending HR Review'
+                    : (st === 'REJECTED'
+                        ? '-5% Deducted'
+                        : (rawImpact && rawImpact.toUpperCase() !== 'NO_DEDUCTION'
+                            ? rawImpact.replace(/_/g, ' ')
+                            : 'No Deduction'));
+
+                const noteBlock = item.notes
+                    ? `<div class="el-hi-notes">${esc(item.notes)}</div>`
+                    : '';
+
+                return `
+                    <div class="el-history-item">
+                        <div class="el-hi-top">
+                            <div>
+                                <h4 class="el-hi-reason">${esc(item.reason)}</h4>
+                                <div class="el-hi-date">Leave Date: <strong>${fmtDate(item.leave_date)}</strong></div>
+                            </div>
+                            <span class="el-badge ${cls}">${esc(st)}</span>
+                        </div>
+                        ${noteBlock}
+                        <div class="el-hi-footer">
+                            <span class="el-hi-impact-label">KPI Attendance Impact</span>
+                            <span class="el-hi-impact-val" style="color:${impactColor};">${esc(impactLabel)}</span>
+                        </div>
+                    </div>`;
+            }).join('');
+        };
+
+        const switchElTab = (tab) => {
+            document.querySelectorAll('.el-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.elTab === tab));
+            if (elForm) elForm.style.display = tab === 'form' ? 'flex' : 'none';
+            if (elHistory) elHistory.style.display = tab === 'history' ? 'flex' : 'none';
+        };
+        const openElModal = () => {
+            if (!elModal) return;
+            elModal.classList.add('active');
+            switchElTab('form');
+        };
+        const closeElModal = () => elModal && elModal.classList.remove('active');
+
+        $('openEmergencyLeaveModalBtn')?.addEventListener('click', openElModal);
+        $('closeEmergencyLeaveModalBtn')?.addEventListener('click', closeElModal);
+        $('cancelEmergencyLeaveBtn')?.addEventListener('click', closeElModal);
+        $('closeHistoryPaneBtn')?.addEventListener('click', closeElModal);
+        elModal?.addEventListener('click', e => { if (e.target === elModal) closeElModal(); });
+
+        document.querySelectorAll('.el-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchElTab(btn.dataset.elTab));
+        });
+
+        elReason?.addEventListener('change', () => {
+            const isOther = elReason.value === 'Other';
+            elNotesWrap?.classList.toggle('open', isOther);
+            if (elNotes) elNotes.required = isOther;
+            if (!isOther && elNotes) {
+                elNotes.value = '';
+                if (elNotesCount) elNotesCount.textContent = '0';
+            }
+        });
+
+        elNotes?.addEventListener('input', () => {
+            if (elNotesCount) elNotesCount.textContent = elNotes.value.length;
+        });
+
+        elForm?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const postUrl = '{{ Route::has("worker.emergency-leave.store") ? route("worker.emergency-leave.store") : url("/worker/emergency-leave") }}';
+
+            elSubmitBtn.disabled = true;
+            elSubmitBtn.textContent = 'Submitting...';
+
+            try {
+                const res = await fetch(postUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrf,
+                    },
+                    body: JSON.stringify({
+                        leave_date: $('elLeaveDate').value,
+                        reason: elReason.value,
+                        notes: elNotes ? elNotes.value.trim() : '',
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok || data.status !== 'success') {
+                    throw new Error(data.message || 'Failed to submit emergency leave.');
+                }
+
+                window.renderEmergencyLeaves(data.leaves || []);
+                elForm.reset();
+                $('elLeaveDate').value = todayISO();
+                elNotesWrap?.classList.remove('open');
+                if (elNotesCount) elNotesCount.textContent = '0';
+
+                toast('Emergency leave request sent to HR.');
+                switchElTab('history');
+            } catch (err) {
+                toast(err.message || 'Error submitting request.', 'error');
+            } finally {
+                elSubmitBtn.disabled = false;
+                elSubmitBtn.textContent = 'Submit to HR';
+            }
+        });
 
         $('syncBtn').addEventListener('click', fetchWorkerProfileFromBackend);
         $('copyIdBtn').addEventListener('click', copyWorkerId);
@@ -800,8 +1253,10 @@
                 .observe(dd, { attributes: true, attributeFilter: ['class'] });
         });
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape')
+            if (e.key === 'Escape') {
                 document.querySelectorAll('.notification-dropdown.active, .profile-dropdown.active').forEach(d => d.classList.remove('active'));
+                $('emergencyLeaveModal')?.classList.remove('active');
+            }
         });
     }
 
@@ -811,6 +1266,36 @@
         fetchWorkerProfileFromBackend();
     });
     })();
+
+    // MARK ALL READ
+
+    document.querySelectorAll('[data-mark-all-read], #markAllNotificationsRead').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+                const res = await fetch("{{ route('worker.notifications.read') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({})
+                });
+                if (res.ok) {
+                    document.querySelectorAll('.wn-item.is-unread').forEach(el => {
+                        el.classList.remove('is-unread');
+                        el.style.background = '#ffffff';
+                    });
+                    const bellBadge = document.getElementById('workerNotifBadge');
+                    if (bellBadge) bellBadge.style.display = 'none';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+    });
+
     </script>
    <script src="{{ asset('session.js') }}?v=8"></script>
 </body>

@@ -84,6 +84,148 @@ class FypController extends Controller
         return $totalTasks > 0 ? round(($doneTasks / $totalTasks) * 40, 2) : 0.00;
     }
 
+    private function ensureWorkerNotificationsTable(): void
+    {
+        if (!Schema::hasTable('worker_notifications')) {
+            Schema::create('worker_notifications', function ($table) {
+                $table->id();
+                $table->string('worker_id', 50)->index();
+                $table->string('category', 30)->default('general'); // leave, task, kpi, profile
+                $table->string('title', 150);
+                $table->text('message');
+                $table->string('ref_key', 120)->nullable()->index();
+                $table->boolean('is_read')->default(false);
+                $table->timestamps();
+            });
+        }
+    }
+
+    private function pushWorkerNotification(
+        string $workerId,
+        string $category,
+        string $title,
+        string $message,
+        ?string $refKey = null
+    ): void {
+        if ($workerId === '') return;
+
+        $this->ensureWorkerNotificationsTable();
+
+        // Elak notifikasi pendua jika peristiwa sama sudah direkodkan
+        if ($refKey !== null) {
+            $alreadyExists = DB::table('worker_notifications')
+                ->where('worker_id', $workerId)
+                ->where('ref_key', $refKey)
+                ->exists();
+
+            if ($alreadyExists) {
+                return;
+            }
+        }
+
+        DB::table('worker_notifications')->insert([
+            'worker_id'  => $workerId,
+            'category'   => $category,
+            'title'      => $title,
+            'message'    => $message,
+            'ref_key'    => $refKey,
+            'is_read'    => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function syncWorkerSmartNotifications($user, $jobs, array $emergencyLeaves, float $monthlyScore, float $deptTarget): void
+    {
+        $workerId = (string) ($user->worker_id ?? '');
+        if ($workerId === '') return;
+
+        $this->ensureWorkerNotificationsTable();
+        $ymKey = date('Y-m');
+
+        // 0. Notifikasi Keputusan Emergency Leave (Approved / Rejected)
+        foreach ($emergencyLeaves as $lv) {
+            $lvId   = (int) ($lv['id'] ?? 0);
+            $status = strtoupper(trim((string) ($lv['status'] ?? 'PENDING')));
+            $date   = $lv['leave_date'] ?? '';
+            $reason = $lv['reason'] ?? 'Emergency Leave';
+
+            if ($lvId > 0 && $status === 'REJECTED') {
+                $this->pushWorkerNotification(
+                    $workerId,
+                    'leave',
+                    'Emergency Leave Rejected (-5%)',
+                    "Your {$reason} request for {$date} was rejected by HR (-5% KPI attendance deduction applied).",
+                    "leave_status_{$lvId}_rejected"
+                );
+            } elseif ($lvId > 0 && $status === 'APPROVED') {
+                $this->pushWorkerNotification(
+                    $workerId,
+                    'leave',
+                    'Emergency Leave Approved',
+                    "Your {$reason} request for {$date} was approved by HR (No KPI deduction).",
+                    "leave_status_{$lvId}_approved"
+                );
+            }
+        }
+
+        // 1. Notifikasi Tugasan Baharu / Siap daripada tasks_etracker
+        foreach ($jobs->take(5) as $job) {
+            $jobId    = $job->task_id ?? $job->id ?? md5($job->project_name ?? $job->task_name ?? '');
+            $jobTitle = $job->project_name ?? $job->task_name ?? $job->title ?? 'Assigned Project';
+            $status   = strtoupper(trim((string) ($job->status ?? '')));
+
+            if ($status === 'COMPLETED') {
+                $this->pushWorkerNotification(
+                    $workerId,
+                    'task',
+                    'Project Completed',
+                    "Task \"{$jobTitle}\" has been marked as Completed and counted toward your KPI.",
+                    "task_done_{$jobId}"
+                );
+            } else {
+                $this->pushWorkerNotification(
+                    $workerId,
+                    'task',
+                    'Task Assigned / Active',
+                    "You have an active task: \"{$jobTitle}\" ({$job->status}).",
+                    "task_active_{$jobId}_{$status}"
+                );
+            }
+        }
+
+        // 2. Notifikasi Pencapaian / Amaran Skor KPI Bulanan
+        if ($monthlyScore >= 90) {
+            $this->pushWorkerNotification(
+                $workerId,
+                'kpi',
+                'Gold Tier KPI Achieved',
+                "Great work! Your current KPI score is {$monthlyScore}% (above the 90% Gold Tier benchmark).",
+                "kpi_gold_{$ymKey}"
+            );
+        } elseif ($monthlyScore < $deptTarget) {
+            $this->pushWorkerNotification(
+                $workerId,
+                'kpi',
+                'KPI Below Department Target',
+                "Your current KPI score is {$monthlyScore}%, slightly below your department target ({$deptTarget}%).",
+                "kpi_low_{$ymKey}"
+            );
+        }
+
+        // 3. Notifikasi Jawatan Semasa
+        if (!empty($user->position)) {
+            $posSlug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '_', $user->position));
+            $this->pushWorkerNotification(
+                $workerId,
+                'profile',
+                'Current Role Verified',
+                "Your active position is listed as {$user->position}.",
+                "pos_{$posSlug}"
+            );
+        }
+    }
+
     // PAPARAN DASHBOARD STAFF / WORKER
     public function workerProfile()
     {
@@ -137,7 +279,220 @@ class FypController extends Controller
 
         $setting = KpiSetting::first();
 
-        return view('worker', compact('user', 'kpiScores', 'jobs', 'setting'));
+        // Ambil sejarah permohonan Emergency Leave pekerja semasa
+        $elMeta      = $this->getEmergencyLeaveMeta();
+        $elPk        = $elMeta['pk'];
+        $elDateCol   = $elMeta['dateCol'];
+        $elStatusCol = $elMeta['statusCol'];
+        $elNotesCol  = $elMeta['notesCol'];
+        $elImpactCol = $elMeta['impactCol'];
+
+        $emergencyLeaves = DB::table('emergency_leaves')
+            ->where('worker_id', $user->worker_id)
+            ->orderByDesc($elPk)
+            ->get()
+            ->map(function ($lv) use ($elPk, $elDateCol, $elStatusCol, $elNotesCol, $elImpactCol) {
+                $rawDate     = ($elDateCol && !empty($lv->$elDateCol)) ? $lv->$elDateCol : '';
+                $statusUpper = strtoupper(trim((string) ($lv->$elStatusCol ?? '')));
+                if ($statusUpper === '') {
+                    $statusUpper = 'PENDING';
+                }
+
+                $rawImpact = strtoupper(trim((string) ($elImpactCol ? ($lv->$elImpactCol ?? '') : '')));
+
+                if ($statusUpper === 'PENDING') {
+                    $impactVal = 'Pending HR Review';
+                } elseif ($statusUpper === 'REJECTED' || str_contains($rawImpact, '5') || str_contains($rawImpact, 'DEDUCTED')) {
+                    $impactVal = '-5% Deducted';
+                } elseif ($statusUpper === 'APPROVED' || $rawImpact === 'NO_DEDUCTION' || $rawImpact === 'NO DEDUCT') {
+                    $impactVal = 'No Deduction';
+                } else {
+                    $impactVal = ucwords(strtolower(str_replace('_', ' ', $rawImpact ?: 'Pending HR Review')));
+                }
+
+                return [
+                    'id'         => (int) ($lv->$elPk ?? 0),
+                    'leave_date' => substr((string) $rawDate, 0, 10),
+                    'reason'     => $lv->reason ?? 'Emergency Leave',
+                    'notes'      => $elNotesCol ? ($lv->$elNotesCol ?? '') : '',
+                    'status'     => $statusUpper,
+                    'impact'     => $impactVal,
+                ];
+            })
+            ->values()
+            ->all();
+
+        // Segerakkan & ambil notifikasi peribadi pekerja
+        $this->syncWorkerSmartNotifications($user, $jobs, $emergencyLeaves, (float) $monthlyUserScore, (float) $deptTarget);
+
+        $workerNotifications = DB::table('worker_notifications')
+            ->where('worker_id', $user->worker_id)
+            ->orderByDesc('id')
+            ->limit(15)
+            ->get()
+            ->map(function ($n) {
+                return [
+                    'id'       => (int) $n->id,
+                    'category' => $n->category,
+                    'title'    => $n->title,
+                    'message'  => $n->message,
+                    'is_read'  => (bool) $n->is_read,
+                    'time_ago' => \Carbon\Carbon::parse($n->created_at)->diffForHumans(),
+                ];
+            })
+            ->values()
+            ->all();
+
+        return view('worker', compact(
+            'user',
+            'kpiScores',
+            'jobs',
+            'setting',
+            'emergencyLeaves',
+            'workerNotifications'
+        ));
+    }
+
+    // MARK AS READ
+
+    public function markWorkerNotificationsRead(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user || empty($user->worker_id)) {
+            return response()->json(['status' => 'error'], 401);
+        }
+
+        $this->ensureWorkerNotificationsTable();
+
+        $query = DB::table('worker_notifications')
+            ->where('worker_id', $user->worker_id)
+            ->where('is_read', false);
+
+        if ($request->filled('id')) {
+            $query->where('id', (int) $request->input('id'));
+        }
+
+        $query->update([
+            'is_read'    => true,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['status' => 'success']);
+    }
+
+    // PEKERJA HANTAR PERMOHONAN EMERGENCY LEAVE
+    public function submitWorkerEmergencyLeave(Request $request)
+    {
+        $request->merge([
+            'leave_date' => $request->input('leave_date') ?? $request->input('leaveDate') ?? $request->input('date'),
+            'reason'     => trim((string) ($request->input('reason') ?? 'Emergency Leave')),
+            'notes'      => trim((string) (
+                $request->input('notes')
+                ?? $request->input('other_reason')
+                ?? $request->input('remarks')
+                ?? $request->input('description')
+                ?? ''
+            )),
+        ]);
+
+        $validated = $request->validate([
+            'leave_date' => 'required|date',
+            'reason'     => 'required|string|max:100',
+            'notes'      => 'nullable|string|max:300',
+        ]);
+
+        $user = Auth::user();
+        if (!$user || empty($user->worker_id)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Worker profile not found.'
+            ], 403);
+        }
+
+        $meta      = $this->getEmergencyLeaveMeta();
+        $columns   = $meta['columns'];
+        $pk        = $meta['pk'];
+        $dateCol   = $meta['dateCol'];
+        $statusCol = $meta['statusCol'];
+        $notesCol  = $meta['notesCol'];
+        $impactCol = $meta['impactCol'];
+
+        if ($dateCol) {
+            $exists = DB::table('emergency_leaves')
+                ->where('worker_id', $user->worker_id)
+                ->where($dateCol, $validated['leave_date'])
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'You have already submitted an emergency leave request for this date.'
+                ], 422);
+            }
+        }
+
+        $payload = [
+            'worker_id' => $user->worker_id,
+            'reason'    => $validated['reason'],
+            $statusCol  => 'PENDING',
+        ];
+        if ($dateCol)                         $payload[$dateCol]     = $validated['leave_date'];
+        if ($notesCol)                        $payload[$notesCol]    = $validated['notes'] ?? '';
+        if ($impactCol)                       $payload[$impactCol]   = 'Pending Review';
+        if (in_array('created_at', $columns)) $payload['created_at'] = now();
+        if (in_array('updated_at', $columns)) $payload['updated_at'] = now();
+
+        $newId = (int) DB::table('emergency_leaves')->insertGetId($payload);
+
+        $record = [
+            'id'         => $newId,
+            'leave_date' => $validated['leave_date'],
+            'leaveDate'  => $validated['leave_date'],
+            'reason'     => $validated['reason'],
+            'notes'      => $validated['notes'] ?? '',
+            'status'     => 'PENDING',
+            'impact'     => 'Pending HR Review',
+        ];
+
+        $allLeaves = DB::table('emergency_leaves')
+            ->where('worker_id', $user->worker_id)
+            ->orderByDesc($pk)
+            ->get()
+            ->map(function ($lv) use ($pk, $dateCol, $statusCol, $notesCol, $impactCol) {
+                $rawDate     = ($dateCol && !empty($lv->$dateCol)) ? $lv->$dateCol : '';
+                $statusUpper = strtoupper(trim((string) ($lv->$statusCol ?? '')));
+                if ($statusUpper === '') {
+                    $statusUpper = 'PENDING';
+                }
+
+                $rawImpact = strtoupper(trim((string) ($impactCol ? ($lv->$impactCol ?? '') : '')));
+                if ($statusUpper === 'PENDING') {
+                    $impactVal = 'Pending HR Review';
+                } elseif ($statusUpper === 'REJECTED' || str_contains($rawImpact, '5') || str_contains($rawImpact, 'DEDUCTED')) {
+                    $impactVal = '-5% Deducted';
+                } else {
+                    $impactVal = 'No Deduction';
+                }
+
+                return [
+                    'id'         => (int) ($lv->$pk ?? 0),
+                    'leave_date' => substr((string) $rawDate, 0, 10),
+                    'reason'     => $lv->reason ?? 'Emergency Leave',
+                    'notes'      => $notesCol ? ($lv->$notesCol ?? '') : '',
+                    'status'     => $statusUpper,
+                    'impact'     => $impactVal,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Emergency leave request submitted to HR.',
+            'record'  => $record,
+            'leave'   => $record,
+            'leaves'  => $allLeaves,
+        ]);
     }
 
     public function updateProfilePhoto(Request $request)
@@ -837,10 +1192,128 @@ class FypController extends Controller
         ]);
     }
 
-    // PAPARAN HR - EMERGENCY LEAVE (SAMBUNGAN DATABASE MYSQL)
+    // HELPER: KESAN NAMA LAJUR SEBENAR JADUAL emergency_leaves SECARA AUTOMATIK
+    private function getEmergencyLeaveMeta(): array
+    {
+        if (!Schema::hasTable('emergency_leaves')) {
+            Schema::create('emergency_leaves', function ($table) {
+                $table->id();
+                $table->string('worker_id');
+                $table->date('leave_date');
+                $table->string('reason');
+                $table->text('notes')->nullable();
+                $table->string('status', 30)->default('PENDING');
+                $table->string('impact', 50)->nullable();
+                $table->timestamps();
+            });
+        }
+
+        $columns   = Schema::getColumnListing('emergency_leaves');
+        $pk        = in_array('id', $columns) ? 'id' : (in_array('leave_id', $columns) ? 'leave_id' : $columns[0]);
+        $dateCol   = in_array('leave_date', $columns) ? 'leave_date' : (in_array('date', $columns) ? 'date' : null);
+        
+        $notesCol = null;
+        foreach (['notes', 'remarks', 'other_reason', 'description', 'details', 'explanation'] as $candidate) {
+            if (in_array($candidate, $columns)) {
+                $notesCol = $candidate;
+                break;
+            }
+        }
+
+        if (!$notesCol) {
+            Schema::table('emergency_leaves', function ($table) {
+                $table->text('notes')->nullable();
+            });
+            $notesCol  = 'notes';
+            $columns[] = 'notes';
+        }
+
+        $impactCol = in_array('impact', $columns) ? 'impact' : (in_array('attendance_impact', $columns) ? 'attendance_impact' : null);
+
+        $statusCol = null;
+        foreach (['status', 'leave_status', 'approval_status', 'adjustment_status'] as $candidate) {
+            if (in_array($candidate, $columns)) {
+                $statusCol = $candidate;
+                break;
+            }
+        }
+
+        if (!$statusCol) {
+            Schema::table('emergency_leaves', function ($table) {
+                $table->string('status', 30)->default('PENDING');
+            });
+            $statusCol = 'status';
+            $columns[] = 'status';
+
+            if ($impactCol) {
+                DB::table('emergency_leaves')
+                    ->whereNotNull($impactCol)
+                    ->where($impactCol, '!=', '')
+                    ->where($impactCol, '!=', 'Pending Review')
+                    ->update([
+                        'status' => DB::raw("CASE WHEN {$impactCol} LIKE '%Deducted%' OR {$impactCol} LIKE '%-5%' THEN 'REJECTED' ELSE 'APPROVED' END")
+                    ]);
+            }
+        }
+
+        return compact('columns', 'pk', 'dateCol', 'statusCol', 'notesCol', 'impactCol');
+    }
+
+    // API NOTIFIKASI LOCENG HR (PERMOHONAN EMERGENCY LEAVE BERSTATUS PENDING)
+    public function getHrNotifications()
+    {
+        $meta      = $this->getEmergencyLeaveMeta();
+        $pk        = $meta['pk'];
+        $dateCol   = $meta['dateCol'];
+        $statusCol = $meta['statusCol'];
+        $notesCol  = $meta['notesCol'];
+
+        $items = [];
+        $pendingRows = DB::table('emergency_leaves')
+            ->whereRaw("UPPER(TRIM(COALESCE(`{$statusCol}`, 'PENDING'))) = ?", ['PENDING'])
+            ->orderByDesc($pk)
+            ->get();
+
+        foreach ($pendingRows as $lv) {
+            $user = User::where('worker_id', $lv->worker_id ?? '')->first();
+            $dept = $user ? Department::where('department_id', $user->department_id)->first() : null;
+
+            $rawDate   = ($dateCol && !empty($lv->$dateCol)) ? $lv->$dateCol : date('Y-m-d');
+            $isoDate   = substr((string) $rawDate, 0, 10);
+            $fmtDate   = \Carbon\Carbon::parse($isoDate)->format('d/m/Y');
+            $createdAt = !empty($lv->created_at)
+                ? \Carbon\Carbon::parse($lv->created_at)->diffForHumans()
+                : 'Just now';
+
+            $items[] = [
+                'id'         => (int) ($lv->$pk ?? 0),
+                'worker_id'  => $lv->worker_id ?? '',
+                'staff'      => $user->full_name ?? ($lv->staff_name ?? $lv->worker_id ?? 'Staff'),
+                'department' => $dept->department_name ?? ($lv->department ?? 'General'),
+                'leaveDate'  => $isoDate,
+                'leaveLabel' => $fmtDate,
+                'reason'     => $lv->reason ?? 'Emergency Leave',
+                'notes'      => $notesCol ? ($lv->$notesCol ?? '') : '',
+                'timeAgo'    => $createdAt,
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'count'  => count($items),
+            'items'  => $items,
+        ]);
+    }
+
+    // PAPARAN HR - EMERGENCY LEAVE (ASINGKAN PENDING & AUDIT LOG)
     public function emerLeave()
     {
-        // 1. Dapatkan senarai staf & jabatan sebenar dari jadual users & departments
+        $meta      = $this->getEmergencyLeaveMeta();
+        $pk        = $meta['pk'];
+        $dateCol   = $meta['dateCol'];
+        $statusCol = $meta['statusCol'];
+        $notesCol  = $meta['notesCol'];
+
         $staffList = User::where('role', '!=', 'HR')
             ->orderBy('full_name', 'asc')
             ->get()
@@ -853,41 +1326,49 @@ class FypController extends Controller
                 ];
             });
 
-        // 2. Dapatkan rekod audit log dari jadual emergency_leaves
-        $auditLogs = [];
-        if (Schema::hasTable('emergency_leaves')) {
-            $columns = Schema::getColumnListing('emergency_leaves');
-            $pk = in_array('id', $columns) ? 'id' : (in_array('leave_id', $columns) ? 'leave_id' : $columns[0]);
+        $pendingRequests = [];
+        $auditLogs       = [];
 
-            $leaves = DB::table('emergency_leaves')->orderBy($pk, 'desc')->get();
+        $leaves = DB::table('emergency_leaves')->orderBy($pk, 'desc')->get();
 
-            foreach ($leaves as $index => $lv) {
-                $user = User::where('worker_id', $lv->worker_id ?? '')->first();
-                $dept = $user ? Department::where('department_id', $user->department_id)->first() : null;
+        foreach ($leaves as $index => $lv) {
+            $user = User::where('worker_id', $lv->worker_id ?? '')->first();
+            $dept = $user ? Department::where('department_id', $user->department_id)->first() : null;
 
-                $rawDate = $lv->leave_date ?? $lv->date ?? date('Y-m-d');
-                $formattedDate = substr((string) $rawDate, 0, 10);
+            $rawDate       = ($dateCol && !empty($lv->$dateCol)) ? $lv->$dateCol : date('Y-m-d');
+            $formattedDate = substr((string) $rawDate, 0, 10);
+            $rawStatus     = trim((string) ($lv->$statusCol ?? ''));
+            $statusLower   = $rawStatus === '' ? 'pending' : strtolower($rawStatus);
 
-                $auditLogs[] = [
-                    'id'         => $lv->$pk ?? ($index + 1),
-                    'worker_id'  => $lv->worker_id ?? '',
-                    'staff'      => $user->full_name ?? ($lv->staff_name ?? $lv->worker_id ?? 'Staff'),
-                    'department' => $dept->department_name ?? ($lv->department ?? 'General'),
-                    'leaveDate'  => $formattedDate,
-                    'reason'     => $lv->reason ?? 'Emergency Leave',
-                    'notes'      => $lv->notes ?? ($lv->remarks ?? ''),
-                    'status'     => strtolower($lv->status ?? 'approved'),
-                ];
+            $entry = [
+                'id'          => (int) ($lv->$pk ?? ($index + 1)),
+                'worker_id'   => $lv->worker_id ?? '',
+                'staff'       => $user->full_name ?? ($lv->staff_name ?? $lv->worker_id ?? 'Staff'),
+                'department'  => $dept->department_name ?? ($lv->department ?? 'General'),
+                'leaveDate'   => $formattedDate,
+                'reason'      => $lv->reason ?? 'Emergency Leave',
+                'notes'       => $notesCol ? ($lv->$notesCol ?? '') : '',
+                'status'      => $statusLower,
+                'submittedAt' => !empty($lv->created_at)
+                    ? \Carbon\Carbon::parse($lv->created_at)->diffForHumans()
+                    : 'Recently',
+            ];
+
+            if ($statusLower === 'pending') {
+                $pendingRequests[] = $entry;
+            } else {
+                $auditLogs[] = $entry;
             }
         }
 
-        return view('emerleave', compact('staffList', 'auditLogs'));
+        return view('emerleave', compact('staffList', 'auditLogs', 'pendingRequests'));
     }
 
-    // SIMPAN MANUAL ATTENDANCE OVERRIDE KE DATABASE MYSQL
+    // SIMPAN / KEMAS KINI KEPUTUSAN EMERGENCY LEAVE KE DATABASE MYSQL
     public function storeEmerLeave(Request $request)
     {
         $validated = $request->validate([
+            'leave_id'  => 'nullable|integer',
             'worker_id' => 'required|string',
             'leaveDate' => 'required|date',
             'reason'    => 'required|string|max:100',
@@ -895,64 +1376,73 @@ class FypController extends Controller
             'status'    => 'required|in:approved,rejected',
         ]);
 
-        // Bina jadual emergency_leaves secara automatik jika belum wujud dalam MySQL
-        if (!Schema::hasTable('emergency_leaves')) {
-            Schema::create('emergency_leaves', function ($table) {
-                $table->id();
-                $table->string('worker_id');
-                $table->date('leave_date');
-                $table->string('reason');
-                $table->text('notes')->nullable();
-                $table->string('status', 20)->default('approved');
-                $table->string('impact', 50)->nullable();
-                $table->timestamps();
-            });
-        }
-
-        $columns = Schema::getColumnListing('emergency_leaves');
-        $dateCol = in_array('leave_date', $columns) ? 'leave_date' : (in_array('date', $columns) ? 'date' : null);
-
-        // Semak rekod bertindih untuk staf & tarikh yang sama
-        if ($dateCol) {
-            $exists = DB::table('emergency_leaves')
-                ->where('worker_id', $validated['worker_id'])
-                ->where($dateCol, $validated['leaveDate'])
-                ->exists();
-
-            if ($exists) {
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => 'This staff member already has an emergency leave record on the selected date.'
-                ], 422);
-            }
-        }
+        $meta      = $this->getEmergencyLeaveMeta();
+        $columns   = $meta['columns'];
+        $pk        = $meta['pk'];
+        $dateCol   = $meta['dateCol'];
+        $statusCol = $meta['statusCol'];
+        $notesCol  = $meta['notesCol'];
+        $impactCol = $meta['impactCol'];
 
         $user        = User::where('worker_id', $validated['worker_id'])->first();
         $dept        = $user ? DB::table('departments')->where('department_id', $user->department_id)->first() : null;
         $statusLower = strtolower($validated['status']);
         $impactText  = $statusLower === 'approved' ? 'No Deduct' : '-5% Deducted';
 
-        // Susun data mengikut kolum sebenar yang wujud dalam jadual emergency_leaves
-        $insertData = [];
-        if (in_array('worker_id', $columns))  $insertData['worker_id']  = $validated['worker_id'];
-        if ($dateCol)                         $insertData[$dateCol]     = $validated['leaveDate'];
-        if (in_array('reason', $columns))     $insertData['reason']     = $validated['reason'];
-        if (in_array('notes', $columns))      $insertData['notes']      = $validated['notes'] ?? '';
-        if (in_array('remarks', $columns))    $insertData['remarks']    = $validated['notes'] ?? '';
-        if (in_array('status', $columns))     $insertData['status']     = strtoupper($statusLower);
-        if (in_array('impact', $columns))     $insertData['impact']     = $impactText;
-        if (in_array('created_at', $columns)) $insertData['created_at'] = now();
-        if (in_array('updated_at', $columns)) $insertData['updated_at'] = now();
+        $pendingRow = null;
+        if (!empty($validated['leave_id'])) {
+            $pendingRow = DB::table('emergency_leaves')
+                ->where($pk, $validated['leave_id'])
+                ->whereRaw("UPPER(TRIM(COALESCE(`{$statusCol}`, 'PENDING'))) = ?", ['PENDING'])
+                ->first();
+        }
+        if (!$pendingRow && $dateCol) {
+            $pendingRow = DB::table('emergency_leaves')
+                ->where('worker_id', $validated['worker_id'])
+                ->where($dateCol, $validated['leaveDate'])
+                ->whereRaw("UPPER(TRIM(COALESCE(`{$statusCol}`, 'PENDING'))) = ?", ['PENDING'])
+                ->first();
+        }
 
-        $insertedId = DB::table('emergency_leaves')->insertGetId($insertData);
+        if (!$pendingRow && $dateCol) {
+            $finalizedExists = DB::table('emergency_leaves')
+                ->where('worker_id', $validated['worker_id'])
+                ->where($dateCol, $validated['leaveDate'])
+                ->whereRaw("UPPER(TRIM(COALESCE(`{$statusCol}`, ''))) != ?", ['PENDING'])
+                ->exists();
 
-        // Tolak markah kehadiran dalam jadual monthly_evaluations & users jika status = rejected (-5%)
+            if ($finalizedExists) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'This staff member already has a finalized emergency leave record on the selected date.'
+                ], 422);
+            }
+        }
+
+        $payload = [];
+        if (in_array('worker_id', $columns))  $payload['worker_id']  = $validated['worker_id'];
+        if ($dateCol)                         $payload[$dateCol]     = $validated['leaveDate'];
+        if (in_array('reason', $columns))     $payload['reason']     = $validated['reason'];
+        if ($notesCol)                        $payload[$notesCol]    = $validated['notes'] ?? '';
+        $payload[$statusCol] = strtoupper($statusLower);
+        if ($impactCol)                       $payload[$impactCol]   = $impactText;
+        if (in_array('updated_at', $columns)) $payload['updated_at'] = now();
+
+        if ($pendingRow) {
+            DB::table('emergency_leaves')
+                ->where($pk, $pendingRow->$pk)
+                ->update($payload);
+            $recordId = (int) $pendingRow->$pk;
+        } else {
+            if (in_array('created_at', $columns)) $payload['created_at'] = now();
+            $recordId = (int) DB::table('emergency_leaves')->insertGetId($payload);
+        }
+
         if ($statusLower === 'rejected' && $user) {
             $setting   = KpiSetting::first();
             $attWeight = (float) ($setting->attendance_weightage ?? 20);
-            $deduction = round(5 * ($attWeight / 100), 2); // 5% daripada 20 = 1.00
+            $deduction = round(5 * ($attWeight / 100), 2);
 
-            // Gunakan bulan & tahun kalendar semasa supaya reset setiap bulan
             $evalYear  = (int) date('Y');
             $evalMonth = (int) date('n');
 
@@ -989,7 +1479,6 @@ class FypController extends Controller
                 ]);
             }
 
-            // Segerakkan jadual users
             $userCols = Schema::getColumnListing('users');
             if (in_array('attendance_score', $userCols)) {
                 $newAtt = max(0, ((float) ($user->attendance_score ?? 100)) - 5);
@@ -1000,10 +1489,15 @@ class FypController extends Controller
             }
         }
 
+        $remainingPending = DB::table('emergency_leaves')
+            ->whereRaw("UPPER(TRIM(COALESCE(`{$statusCol}`, 'PENDING'))) = ?", ['PENDING'])
+            ->count();
+
         return response()->json([
-            'status' => 'success',
-            'record' => [
-                'id'         => $insertedId,
+            'status'       => 'success',
+            'pendingCount' => $remainingPending,
+            'record'       => [
+                'id'         => $recordId,
                 'worker_id'  => $validated['worker_id'],
                 'staff'      => $user->full_name ?? $validated['worker_id'],
                 'department' => $dept->department_name ?? 'General',

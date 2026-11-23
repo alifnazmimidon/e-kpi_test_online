@@ -25,7 +25,7 @@
                 </h1>
 
                 <p class="forgot-subtitle reveal" style="--i: 2">
-                    SISTEM E - KPI PEKERJA
+                    E-KPI SYSTEM
                 </p>
 
                 <p class="forgot-description reveal" style="--i: 2">

@@ -6,6 +6,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Department Reports & Performance Slips - E-KPI System</title>
     <link rel="stylesheet" href="{{ asset('styledeptreport.css') }}">
+
+    {{-- DARK MODE --}}
+    <link rel="stylesheet" href="{{ asset('ekpitheme.css') }}">
+    <script src="{{ asset('ekpitheme.js') }}"></script>
 </head>
 <body>
 
@@ -923,5 +927,9 @@
     })();
     </script>
     <script src="{{ asset('session.js') }}?v=8"></script>
+
+    
+    {{-- DARK MODE --}}
+    @include('partials.themeswitcher')
 </body>
 </html>

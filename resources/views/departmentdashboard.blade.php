@@ -7,6 +7,10 @@
     <title>Department Dashboard - E-KPI System</title>
     <link rel="stylesheet" href="{{ asset('styledepartment.css') }}">
       <script src="{{ asset('session.js') }}?v=8"></script>
+
+    {{-- DARK MODE --}}
+    <link rel="stylesheet" href="{{ asset('ekpitheme.css') }}">
+    <script src="{{ asset('ekpitheme.js') }}"></script>
 </head>
 <body>
 
@@ -918,6 +922,8 @@
         fetchDeptDataFromBackend();
     });
     </script>
- 
+
+    {{-- DARK MODE --}}
+    @include('partials.themeswitcher')
 </body>
 </html>

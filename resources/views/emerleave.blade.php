@@ -153,6 +153,10 @@
             display: block;
         }
     </style>
+
+    {{-- DARK MODE --}}
+    <link rel="stylesheet" href="{{ asset('ekpitheme.css') }}">
+    <script src="{{ asset('ekpitheme.js') }}"></script>
 </head>
 
 <body>
@@ -913,5 +917,8 @@
     })();
     </script>
 
+    
+    {{-- DARK MODE --}}
+    @include('partials.themeswitcher')
 </body>
 </html>

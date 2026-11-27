@@ -156,6 +156,9 @@ window.EKPI_Session = {
 
         const style = document.createElement('style');
         style.textContent = `
+
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+            
             #ekpiLogoutOverlay {
                 position: fixed;
                 inset: 0;
@@ -167,7 +170,7 @@ window.EKPI_Session = {
                 justify-content: center;
                 padding: 16px;
                 z-index: 999999;
-                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
             }
             #ekpiLogoutOverlay.open {
                 display: flex;

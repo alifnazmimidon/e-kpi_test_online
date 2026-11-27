@@ -248,6 +248,10 @@
         .el-badge.approved { background: #dcfce7; color: #166534; }
         .el-badge.rejected { background: #fee2e2; color: #991b1b; }
     </style>
+
+    {{-- DARK MODE --}}
+    <link rel="stylesheet" href="{{ asset('ekpitheme.css') }}">
+    <script src="{{ asset('ekpitheme.js') }}"></script>
 </head>
 
 <body>
@@ -278,6 +282,9 @@
         <symbol id="i-list" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4"/></symbol>
         <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/></symbol>
         <symbol id="i-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+        <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+        <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>        
+        <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
     </svg>
 
     @php
@@ -424,13 +431,13 @@
                     @endphp
 
                     <ul class="profile-dropdown-menu">
-                        <li><a href="{{ route('profile.edit') }}">Edit Profile</a></li>
+                        <li><a href="{{ route('profile.edit') }}"><svg class="icon" aria-hidden="true" style="font-size:15px"><use href="#i-user"/></svg>Edit Profile</a></li>
 
                         {{-- Menu Dashboard hanya dipaparkan untuk HR dan Department Leader sahaja --}}
                         @if($isHr || $isLeader)
                             <li>
                                 <a href="{{ $isHr ? (Route::has('hr.dashboard') ? route('hr.dashboard') : url('/hr')) : (Route::has('leader.dashboard') ? route('leader.dashboard') : url('/leader')) }}">
-                                    Dashboard
+                                    <svg class="icon" aria-hidden="true" style="font-size:15px"><use href="#i-dashboard"/></svg>Dashboard
                                 </a>
                             </li>
                         @endif
@@ -438,7 +445,7 @@
                         <li class="divider"></li>
                         <li>
                             <a href="{{ route('logout') }}" class="logout-link"
-                            onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Log Out</a>
+                            onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><svg class="icon" aria-hidden="true" style="font-size:15px"><use href="#i-logout"/></svg>Log Out</a>
                             <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                                 @csrf
                             </form>
@@ -1314,6 +1321,9 @@
 
     </script>
    <script src="{{ asset('session.js') }}?v=8"></script>
+
+   {{-- DARK MODE --}}
+    @include('partials.themeswitcher')
 </body>
 
 </html>

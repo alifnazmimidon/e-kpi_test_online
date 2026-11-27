@@ -9,9 +9,15 @@
     <link rel="stylesheet" href="{{ asset('stylehr.css') }}">
     <link rel="stylesheet" href="{{ asset('stylereport.css') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    {{-- DARK MODE --}}
+    <link rel="stylesheet" href="{{ asset('ekpitheme.css') }}">
+    <script src="{{ asset('ekpitheme.js') }}"></script>
 </head>
 
 <body>
+
+    <h1>TEST</h1>
 
     <a class="skip-link" href="#main">Skip to main content</a>
 
@@ -383,7 +389,8 @@
                     <div class="ai-content-wrapper">
                         <div class="ai-content" id="aiCardContent">
                             <div class="ai-content-wrapper">
-                                <div class="ai-content" id="aiCardContent" data-ai-insights='@json($aiInsights ?? [])'></div>
+                                <div class="ai-content" id="aiCardContent"></div>
+                                <script type="application/json" id="aiInsightsPayload">@json($aiInsights ?? [])</script>
                             </div>
                         </div>
                     </div>
@@ -564,83 +571,88 @@
 
     //AI REFRESH
     async function refreshAiAnalytics() {
-        const form = $('aiRefreshForm');
-        const btn = $('aiRefreshBtn');
-        const iconEl = $('aiRefreshIcon');
-        const card = $('aiCardContent');
-        const badge = $('aiStatusBadge');
-        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const form = $('aiRefreshForm');
+    const btn = $('aiRefreshBtn');
+    const iconEl = $('aiRefreshIcon');
+    const card = $('aiCardContent');
+    const badge = $('aiStatusBadge');
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-        if (!form || !btn || btn.disabled) return;
+    if (!form || !btn || btn.disabled) return;
 
-        // Aktifkan animasi pusingan ikon & paparan loading dalam kad AI sahaja
-        btn.disabled = true;
-        btn.style.opacity = '0.65';
-        if (iconEl) iconEl.style.animation = 'spin 0.85s linear infinite';
-        clearInterval(aiTimer);
+    btn.disabled = true;
+    btn.style.opacity = '0.65';
+    if (iconEl) iconEl.style.animation = 'spin 0.85s linear infinite';
+    clearInterval(aiTimer);
 
-        if (card) {
-            card.innerHTML = `
-                <span class="ai-tag">ANALYZING DATA</span>
-                <div class="ai-title">Regenerating AI Insights...</div>
-                <div class="ai-desc">Analyzing latest department KPI & submission records.</div>`;
-        }
+    if (card) {
+        card.innerHTML = `
+            <span class="ai-tag">ANALYZING DATA</span>
+            <div class="ai-title">Regenerating AI Insights...</div>
+            <div class="ai-desc">Analyzing latest department KPI & submission records.</div>`;
+    }
 
-        try {
-            const res = await fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': token,
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json, text/html'
-                }
-            });
+    try {
+        const res = await fetch(form.action, {
+            method: 'POST',
+            cache: 'no-store',
+            body: new FormData(form),
+            headers: {
+                'X-CSRF-TOKEN': token,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json, text/html'
+            }
+        });
 
-            if (!res.ok) throw new Error('Failed to refresh AI insights');
+        if (!res.ok) throw new Error('Failed to refresh AI insights');
 
-            const contentType = res.headers.get('content-type') || '';
+        const contentType = res.headers.get('content-type') || '';
+        let latestInsights = null;
 
-            if (contentType.includes('application/json')) {
-                // Jika Controller memulangkan respons JSON
-                const data = await res.json();
-                if (Array.isArray(data.aiInsights) && data.aiInsights.length > 0) {
-                    aiInsights = data.aiInsights;
-                }
-                if (badge && data.aiSource) {
-                    badge.textContent = data.aiSource === 'gemini-ai' ? 'Gemini AI Live' : 'Smart Insights';
-                }
-            } else {
-                // Jika Controller masih menggunakan redirect()->back(), ekstrak data AI sahaja daripada HTML
-                const html = await res.text();
-                const doc = new DOMParser().parseFromString(html, 'text/html');
-                const newCard = doc.getElementById('aiCardContent');
-                const newBadge = doc.getElementById('aiStatusBadge');
+        if (contentType.includes('application/json')) {
+            const data = await res.json();
+            if (Array.isArray(data.aiInsights) && data.aiInsights.length > 0) {
+                latestInsights = data.aiInsights;
+            }
+            if (badge && data.aiSource) {
+                badge.textContent = data.aiSource === 'gemini-ai' ? 'Gemini AI Live' : 'Smart Insights';
+            }
+        } else {
+            const html = await res.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const payloadEl = doc.getElementById('aiInsightsPayload');
+            const newBadge = doc.getElementById('aiStatusBadge');
 
-                if (newCard && newCard.dataset.aiInsights) {
-                    const parsed = JSON.parse(newCard.dataset.aiInsights);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        aiInsights = parsed;
-                    }
-                }
-                if (newBadge && badge) {
-                    badge.textContent = newBadge.textContent.trim();
+            if (payloadEl && payloadEl.textContent.trim()) {
+                const parsed = JSON.parse(payloadEl.textContent);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    latestInsights = parsed;
                 }
             }
-
-            currentSlide = 0;
-            renderAISlide(0);
-            showAiToast('AI Analytics updated.');
-        } catch (err) {
-            console.error('AI Refresh Error:', err);
-            renderAISlide(currentSlide);
-            showAiToast('Failed to refresh AI Analytics.', true);
-        } finally {
-            btn.disabled = false;
-            btn.style.opacity = '1';
-            if (iconEl) iconEl.style.animation = '';
-            syncAIAutoplay();
+            if (newBadge && badge) {
+                badge.textContent = newBadge.textContent.trim();
+            }
         }
+
+        if (latestInsights) {
+            // Ubah kandungan array secara terus supaya berfungsi walaupun aiInsights ialah 'const'
+            aiInsights.splice(0, aiInsights.length, ...latestInsights);
+        }
+
+        currentSlide = 0;
+        renderAISlide(0);
+        showAiToast('AI Analytics updated with latest records.');
+    } catch (err) {
+        console.error('AI Refresh Error:', err);
+        renderAISlide(currentSlide);
+        showAiToast('Failed to refresh AI Analytics.', true);
+    } finally {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        if (iconEl) iconEl.style.animation = '';
+        syncAIAutoplay();
     }
+}
 
     // FILTER BADGE RANKING TANPA REFRESH PAGE
     async function filterBadgeRanking(dept) {
@@ -1152,6 +1164,10 @@
     });
 })();
 </script>
+
+
+{{-- DARK MODE --}}
+@include('partials.themeswitcher')
 </body>
 
 <!-- UNHEALTHY / OVERLOAD STAFF MODAL (GROUPED BY DEPARTMENT) -->

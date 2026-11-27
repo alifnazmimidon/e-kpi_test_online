@@ -8,6 +8,10 @@
     <title>KPI Management - E-KPI System</title>
     <link rel="stylesheet" href="{{ asset('stylekpm.css') }}">
         <script src="{{ asset('session.js') }}?v=8"></script>
+
+    {{-- DARK MODE --}}
+    <link rel="stylesheet" href="{{ asset('ekpitheme.css') }}">
+    <script src="{{ asset('ekpitheme.js') }}"></script>
 </head>
 
 <body>
@@ -604,5 +608,8 @@ window.addEventListener('beforeunload', (e) => {
     }
 });
     </script>
+
+    {{-- DARK MODE --}}
+    @include('partials.themeswitcher')
 </body>
 </html>

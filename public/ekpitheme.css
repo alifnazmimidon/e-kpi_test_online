@@ -1,0 +1,610 @@
+/* =====================================================
+   E-KPI SYSTEM - PLUG & PLAY DARK MODE (ENHANCED)
+===================================================== */
+
+/* ---------- FLOATING THEME MENU (PENJURU KIRI BAWAH) ---------- */
+.ekpi-theme-dock {
+    position: fixed;
+    left: 22px;
+    bottom: 22px;
+    z-index: 2900;
+    font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+}
+
+.ekpi-theme-trigger {
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1.5px solid #cbd5e1;
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.ekpi-theme-trigger:hover {
+    transform: translateY(-2px);
+    border-color: #e11d48;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);
+}
+
+.ekpi-theme-trigger svg {
+    width: 17px;
+    height: 17px;
+    stroke: #e11d48;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.ekpi-theme-popover {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 10px);
+    width: 215px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 8px;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px) scale(0.97);
+    transform-origin: bottom left;
+    transition: opacity 200ms ease, transform 200ms ease, visibility 200ms ease;
+}
+
+.ekpi-theme-dock.open .ekpi-theme-popover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.ekpi-theme-popover-title {
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #64748b;
+    padding: 6px 10px 8px;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 6px;
+}
+
+.ekpi-theme-option {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: #334155;
+    padding: 9px 10px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+}
+
+.ekpi-theme-option:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.ekpi-theme-option.active {
+    background: #fff1f2;
+    color: #e11d48;
+    font-weight: 700;
+}
+
+.ekpi-theme-opt-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.ekpi-theme-opt-left svg {
+    width: 15px;
+    height: 15px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.ekpi-theme-check {
+    font-size: 13px;
+    font-weight: 800;
+    opacity: 0;
+}
+
+.ekpi-theme-option.active .ekpi-theme-check {
+    opacity: 1;
+}
+
+/* =====================================================
+   DARK MODE OVERRIDES (KESELURUHAN SISTEM)
+===================================================== */
+html[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body {
+    background: linear-gradient(135deg, #090d16, #0f172a, #13111c) !important;
+    color: #f1f5f9 !important;
+}
+
+/* Floating Menu dalam Dark Mode */
+html[data-theme="dark"] .ekpi-theme-trigger {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"] .ekpi-theme-popover {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme="dark"] .ekpi-theme-popover-title {
+    color: #94a3b8;
+    border-bottom-color: #334155;
+}
+
+html[data-theme="dark"] .ekpi-theme-option {
+    color: #cbd5e1;
+}
+
+html[data-theme="dark"] .ekpi-theme-option:hover {
+    background: #334155;
+    color: #ffffff;
+}
+
+html[data-theme="dark"] .ekpi-theme-option.active {
+    background: rgba(225, 29, 72, 0.2);
+    color: #fb7185;
+}
+
+/* Header & Navigasi */
+html[data-theme="dark"] .header {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+html[data-theme="dark"] .nav-link {
+    color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .nav-link:hover,
+html[data-theme="dark"] .nav-link.active {
+    color: #fb7185 !important;
+}
+
+html[data-theme="dark"] .sync-status {
+    color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .sync-btn {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+/* Permukaan Kad Utama & Pengesanan Automatik */
+html[data-theme="dark"] [data-ekpi-dark-surface="card"],
+html[data-theme="dark"] .profile-card,
+html[data-theme="dark"] .dept-card,
+html[data-theme="dark"] .dept-header-strip,
+html[data-theme="dark"] .system-warning-box,
+html[data-theme="dark"] .team-progress,
+html[data-theme="dark"] .kpi-config-container,
+html[data-theme="dark"] .configuration-card,
+html[data-theme="dark"] .department-target-section,
+html[data-theme="dark"] .performance-section,
+html[data-theme="dark"] .summary-card,
+html[data-theme="dark"] .charts-container,
+html[data-theme="dark"] .chart-card,
+html[data-theme="dark"] .badge-section,
+html[data-theme="dark"] .ai-section,
+html[data-theme="dark"] .ai-navigation {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+/* Permukaan Sekunder, Kepala Kad Konfigurasi & Filter Bar */
+html[data-theme="dark"] [data-ekpi-dark-surface="sub"],
+html[data-theme="dark"] .configuration-header,
+html[data-theme="dark"] .section-header,
+html[data-theme="dark"] .ai-header,
+html[data-theme="dark"] .score-input-item,
+html[data-theme="dark"] .eval-summary-row,
+html[data-theme="dark"] .switch-row,
+html[data-theme="dark"] .total-weight-box,
+html[data-theme="dark"] .threshold-info-box,
+html[data-theme="dark"] .positions-badges-container,
+html[data-theme="dark"] .eom-badges-row,
+html[data-theme="dark"] .ai-content,
+html[data-theme="dark"] .badge-user,
+html[data-theme="dark"] .criteria-item,
+html[data-theme="dark"] .score-breakdown-box,
+html[data-theme="dark"] .action-footer-row,
+html[data-theme="dark"] .modal-header,
+html[data-theme="dark"] .modal-footer,
+html[data-theme="dark"] .confirm-actions,
+html[data-theme="dark"] .notification-header,
+html[data-theme="dark"] .profile-dropdown-header {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+/* Jalur & Lencana Berwarna Lembut (Elak Silau Putih/Pastel) */
+html[data-theme="dark"] [data-ekpi-dark-surface="tint-red"],
+html[data-theme="dark"] .eval-summary-row.highlight,
+html[data-theme="dark"] .trend-badge.negative,
+html[data-theme="dark"] .status-pill.attention {
+    background: rgba(225, 29, 72, 0.18) !important;
+    border-color: rgba(225, 29, 72, 0.38) !important;
+    color: #fda4af !important;
+}
+
+html[data-theme="dark"] [data-ekpi-dark-surface="tint-green"],
+html[data-theme="dark"] .trend-badge.positive,
+html[data-theme="dark"] .status-pill.complete {
+    background: rgba(22, 163, 74, 0.18) !important;
+    border-color: rgba(22, 163, 74, 0.38) !important;
+    color: #86efac !important;
+}
+
+html[data-theme="dark"] [data-ekpi-dark-surface="tint-blue"] {
+    background: rgba(2, 132, 199, 0.18) !important;
+    border-color: rgba(2, 132, 199, 0.38) !important;
+    color: #7dd3fc !important;
+}
+
+/* Tipografi, Nilai Kad & Label */
+html[data-theme="dark"] [data-ekpi-dark-text="primary"],
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] .card-value,
+html[data-theme="dark"] .dept-name,
+html[data-theme="dark"] .dept-card-value,
+html[data-theme="dark"] .tp-title,
+html[data-theme="dark"] .section-sub-header h3,
+html[data-theme="dark"] .summary-label,
+html[data-theme="dark"] .switch-text strong,
+html[data-theme="dark"] .slider-label,
+html[data-theme="dark"] .slider-label label,
+html[data-theme="dark"] .staff-name-text,
+html[data-theme="dark"] .total-score-text,
+html[data-theme="dark"] .section-title,
+html[data-theme="dark"] .ai-title,
+html[data-theme="dark"] .badge-user .name,
+html[data-theme="dark"] .modal-staff-info strong,
+html[data-theme="dark"] .confirm-body h3,
+html[data-theme="dark"] .profile-dropdown-header .user-name,
+html[data-theme="dark"] .notif-title {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] [data-ekpi-dark-text="secondary"],
+html[data-theme="dark"] .card-header,
+html[data-theme="dark"] .card-sub,
+html[data-theme="dark"] .dept-card-header h3,
+html[data-theme="dark"] .tp-count,
+html[data-theme="dark"] .score-label,
+html[data-theme="dark"] .eval-row label,
+html[data-theme="dark"] .form-group label,
+html[data-theme="dark"] .ai-desc,
+html[data-theme="dark"] .confirm-body p,
+html[data-theme="dark"] .field-hint,
+html[data-theme="dark"] .switch-text small,
+html[data-theme="dark"] .profile-dropdown-header .user-role,
+html[data-theme="dark"] .notif-desc,
+html[data-theme="dark"] .warning-text-group span {
+    color: #94a3b8 !important;
+}
+
+/* Kekalkan Teks Putih pada Header Berwarna */
+html[data-theme="dark"] .section-title-chart,
+html[data-theme="dark"] .performance-title,
+html[data-theme="dark"] .card-top-header h2,
+html[data-theme="dark"] .badge-header h3 {
+    color: #ffffff !important;
+}
+
+/* Jadual (Tables) */
+
+html[data-theme="dark"] main table th,
+html[data-theme="dark"] .table-container table th,
+html[data-theme="dark"] .performance-table th,
+html[data-theme="dark"] .department-table th {
+    background: #0f172a !important;
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
+}
+
+html[data-theme="dark"] main table td,
+html[data-theme="dark"] .table-container table td,
+html[data-theme="dark"] .performance-table td,
+html[data-theme="dark"] .department-table td {
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+/* Elak baris jadual bertukar putih semasa hover pada semua halaman */
+html[data-theme="dark"] main table tbody tr:hover,
+html[data-theme="dark"] main table tbody tr:hover > td,
+html[data-theme="dark"] .table-container table tbody tr:hover,
+html[data-theme="dark"] .table-container table tbody tr:hover > td,
+html[data-theme="dark"] .performance-table tbody tr:hover,
+html[data-theme="dark"] .department-table tbody tr:hover,
+html[data-theme="dark"] .sort-btn:hover {
+    background: rgba(51, 65, 85, 0.55) !important;
+    background-color: rgba(51, 65, 85, 0.55) !important;
+}
+
+/* Kekalkan kontras teks utama & sekunder semasa baris di-hover */
+html[data-theme="dark"] main table tbody tr:hover [data-ekpi-dark-text="primary"],
+html[data-theme="dark"] main table tbody tr:hover strong {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] main table tbody tr:hover [data-ekpi-dark-text="secondary"] {
+    color: #94a3b8 !important;
+}
+
+/* Kekalkan warna gelap lencana status (Complete / Approved / Pending / Rejected) semasa hover */
+html[data-theme="dark"] tr:hover .complete,
+html[data-theme="dark"] tr:hover .approved,
+html[data-theme="dark"] .status-badge.complete,
+html[data-theme="dark"] .status-badge.approved {
+    background: rgba(22, 163, 74, 0.2) !important;
+    border-color: rgba(22, 163, 74, 0.4) !important;
+    color: #86efac !important;
+}
+
+html[data-theme="dark"] tr:hover .pending,
+html[data-theme="dark"] tr:hover .rejected,
+html[data-theme="dark"] .status-badge.pending,
+html[data-theme="dark"] .status-badge.rejected {
+    background: rgba(225, 29, 72, 0.2) !important;
+    border-color: rgba(225, 29, 72, 0.4) !important;
+    color: #fda4af !important;
+}
+
+html[data-theme="dark"] tr:hover .draft,
+html[data-theme="dark"] .status-badge.draft {
+    background: rgba(217, 119, 6, 0.2) !important;
+    border-color: rgba(217, 119, 6, 0.4) !important;
+    color: #fcd34d !important;
+}
+
+/* html[data-theme="dark"] .performance-table th,
+html[data-theme="dark"] .department-table th {
+    background: #0f172a !important;
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
+}
+
+html[data-theme="dark"] .performance-table td,
+html[data-theme="dark"] .department-table td {
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+html[data-theme="dark"] .performance-table tbody tr:hover,
+html[data-theme="dark"] .department-table tbody tr:hover,
+html[data-theme="dark"] .sort-btn:hover {
+    background: rgba(51, 65, 85, 0.45) !important;
+}
+
+html[data-theme="dark"] .dept-count-badge {
+    background: #0f172a !important;
+    color: #cbd5e1 !important;
+} */
+
+/* Input, Select & Butang Sekunder */
+html[data-theme="dark"] input[type="text"],
+html[data-theme="dark"] input[type="email"],
+html[data-theme="dark"] input[type="tel"],
+html[data-theme="dark"] input[type="number"],
+html[data-theme="dark"] select,
+html[data-theme="dark"] .quarter-dropdown,
+html[data-theme="dark"] .target-input,
+html[data-theme="dark"] .input-score-box,
+html[data-theme="dark"] .readonly-badge,
+html[data-theme="dark"] .criteria-num-wrap {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] input.readonly-input {
+    background: #090d16 !important;
+    color: #64748b !important;
+}
+
+html[data-theme="dark"] .btn-secondary,
+html[data-theme="dark"] .btn-modal-secondary,
+html[data-theme="dark"] .cancel-btn,
+html[data-theme="dark"] .reset-button,
+html[data-theme="dark"] .btn-next,
+html[data-theme="dark"] .btn-table-action:not(.primary),
+html[data-theme="dark"] .stepper,
+html[data-theme="dark"] .btn-email-reminder {
+    background: #0f172a !important;
+    border-color: #475569 !important;
+    color: #e2e8f0 !important;
+}
+
+html[data-theme="dark"] .btn-secondary:hover,
+html[data-theme="dark"] .reset-button:hover,
+html[data-theme="dark"] .cancel-btn:hover,
+html[data-theme="dark"] .btn-next:hover,
+html[data-theme="dark"] .btn-table-action:not(.primary):hover {
+    background: #334155 !important;
+    color: #ffffff !important;
+}
+
+/* Dropdown, Modal Dialog & Toast */
+html[data-theme="dark"] .notification-dropdown,
+html[data-theme="dark"] .profile-dropdown {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .profile-dropdown-menu li a {
+    color: #e2e8f0 !important;
+}
+
+html[data-theme="dark"] .profile-dropdown-menu li a:hover {
+    background: #334155 !important;
+}
+
+html[data-theme="dark"] .profile-dropdown-menu li.divider,
+html[data-theme="dark"] .notification-item {
+    border-color: #334155 !important;
+    background-color: transparent;
+}
+
+html[data-theme="dark"] .notification-item:hover {
+    background: #0f172a !important;
+}
+
+html[data-theme="dark"] .notification-item.unread {
+    background: rgba(225, 29, 72, 0.16) !important;
+}
+
+html[data-theme="dark"] dialog.confirm-dialog,
+html[data-theme="dark"] dialog.dept-dialog {
+    background: #1e293b !important;
+    color: #f1f5f9 !important;
+    border: 1px solid #334155 !important;
+}
+
+html[data-theme="dark"] .toast {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+/* Garis Carta, Progress Bar & Lencana */
+html[data-theme="dark"] .grid-line {
+    background: #334155 !important;
+}
+
+html[data-theme="dark"] .bar,
+html[data-theme="dark"] .mini-bar,
+html[data-theme="dark"] .tp-track,
+html[data-theme="dark"] .eval-slider.unset {
+    background: #334155 !important;
+}
+
+html[data-theme="dark"] .position-badge {
+    background: #1e293b !important;
+    border-color: #475569 !important;
+    color: #e2e8f0 !important;
+}
+
+html[data-theme="dark"] .position-badge.current {
+    background: rgba(225, 29, 72, 0.22) !important;
+    border-color: rgba(225, 29, 72, 0.45) !important;
+    color: #fda4af !important;
+}
+
+/* =====================================================
+   BADGE RANKING (GOLD, SILVER, BRONZE) - DARK MODE FIX - 24 NOV
+===================================================== */
+html[data-theme="dark"] .badge-section .rank-badge,
+html[data-theme="dark"] .badge-section .score-badge,
+html[data-theme="dark"] .badge-section [class*="rank-badge"],
+html[data-theme="dark"] .badge-section [class*="score-badge"],
+html[data-theme="dark"] .badge-list .rank-badge,
+html[data-theme="dark"] .badge-list [class*="rank-badge"] {
+    background: rgba(148, 163, 184, 0.22) !important;
+    color: #e2e8f0 !important;
+    border: 1px solid rgba(203, 213, 225, 0.35) !important;
+}
+
+/* #1 Gold */
+html[data-theme="dark"] .badge-section .badge-user.rank-1 .rank-badge,
+html[data-theme="dark"] .badge-section .rank-1 .rank-badge,
+html[data-theme="dark"] .badge-section .rank-1 [class*="badge"],
+html[data-theme="dark"] .badge-section .gold.rank-badge,
+html[data-theme="dark"] .badge-section .gold.score-badge,
+html[data-theme="dark"] .badge-section [data-rank="1"] .rank-badge,
+html[data-theme="dark"] .badge-section [data-rank="1"] .score-badge {
+    background: rgba(245, 158, 11, 0.25) !important;
+    color: #fde68a !important;
+    border: 1px solid rgba(251, 191, 36, 0.55) !important;
+}
+
+/* #2 Silver */
+html[data-theme="dark"] .badge-section .badge-user.rank-2 .rank-badge,
+html[data-theme="dark"] .badge-section .rank-2 .rank-badge,
+html[data-theme="dark"] .badge-section .rank-2 [class*="badge"],
+html[data-theme="dark"] .badge-section .silver.rank-badge,
+html[data-theme="dark"] .badge-section .silver.score-badge,
+html[data-theme="dark"] .badge-section [data-rank="2"] .rank-badge,
+html[data-theme="dark"] .badge-section [data-rank="2"] .score-badge {
+    background: rgba(148, 163, 184, 0.25) !important;
+    color: #f1f5f9 !important;
+    border: 1px solid rgba(203, 213, 225, 0.45) !important;
+}
+
+/* #3 Bronze */
+html[data-theme="dark"] .badge-section .badge-user.rank-3 .rank-badge,
+html[data-theme="dark"] .badge-section .rank-3 .rank-badge,
+html[data-theme="dark"] .badge-section .rank-3 [class*="badge"],
+html[data-theme="dark"] .badge-section .bronze.rank-badge,
+html[data-theme="dark"] .badge-section .bronze.score-badge,
+html[data-theme="dark"] .badge-section [data-rank="3"] .rank-badge,
+html[data-theme="dark"] .badge-section [data-rank="3"] .score-badge {
+    background: rgba(234, 88, 12, 0.25) !important;
+    color: #fed7aa !important;
+    border: 1px solid rgba(251, 146, 60, 0.5) !important;
+}
+
+/* =====================================================
+   CHARTS SECTION OUTLINE / BORDER -> KELABU (DARK MODE)
+===================================================== */
+html[data-theme="dark"] .charts-container,
+html[data-theme="dark"] .charts-section,
+html[data-theme="dark"] .chart-section,
+html[data-theme="dark"] .chart-card,
+html[data-theme="dark"] .chart-box,
+html[data-theme="dark"] [class*="chart"] {
+    border-color: #334155 !important;
+    outline-color: #475569 !important;
+}
+
+html[data-theme="dark"] .charts-container:focus-within,
+html[data-theme="dark"] .chart-card:focus-within {
+    border-color: #475569 !important;
+    outline-color: #475569 !important;
+}
+
+/* =====================================================
+   POINTER (.plot-dot) GRAF SAMA WARNA DENGAN LINE GRAF
+===================================================== */
+html[data-theme="dark"] .plot-dot,
+html[data-theme="dark"] #trendDots .plot-dot {
+    background-color: #1e293b !important;
+    border-color: #e11d48 !important;
+}

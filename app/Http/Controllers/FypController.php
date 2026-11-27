@@ -874,6 +874,37 @@ class FypController extends Controller
             'draft'  => $draft,
         ]);
     }
+
+    public function kpiManagement(Request $request)
+    {
+        $selectedQuarter = $request->get('quarter', 'Q3');
+
+        $masterDepartments = ['WebTech', 'R&D', 'Video Production', 'Graphic Design'];
+
+        $existingRecords = Department::where('quarter', $selectedQuarter)
+                            ->get()
+                            ->keyBy('department_name');
+
+        $departments = collect($masterDepartments)->map(function ($deptName) use ($existingRecords, $selectedQuarter) {
+            if ($existingRecords->has($deptName)) {
+                return $existingRecords->get($deptName);
+            }
+
+            return (object) [
+                'department_id'   => null,
+                'department_name' => $deptName,
+                'target_score'    => 80,
+                'assigned_by'     => 'HR Manager',
+                'status'          => 'Pending',
+                'quarter'         => $selectedQuarter
+            ];
+        });
+
+        $setting = KpiSetting::first();
+
+        return view('kpi-management', compact('departments', 'setting', 'selectedQuarter'));
+    }
+
     public function updateFormula(Request $request)
     {
         KpiSetting::where('setting_id', 1)->update([

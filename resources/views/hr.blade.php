@@ -143,7 +143,7 @@
     </div>
     </nav>
 
-<!-- MAIN DASHBOARD -->
+    <!-- MAIN DASHBOARD -->
     @php
         $syncPayloadData = [
             'kpiTrend' => $kpiTrend ?? [20, 45, 60, 75],
@@ -154,6 +154,7 @@
                 ];
             })->values(),
             'aiInsights' => $aiInsights ?? [],
+            'overloadedDepartments' => $overloadedDepartments ?? [],
         ];
     @endphp
     <main class="dashboard" id="main" data-sync-payload='@json($syncPayloadData, JSON_HEX_APOS)'>
@@ -182,7 +183,16 @@
                     </div>
 
                     <!-- 2. UNHEALTHY / OVERLOAD -->
-                    <div class="summary-card {{ ($unhealthyStaffCount ?? 0) > 0 ? 'overload' : '' }} reveal" style="--i:3" id="overloadCard">
+                    <div class="summary-card {{ ($unhealthyStaffCount ?? 0) > 0 ? 'overload' : '' }} reveal"
+                         style="--i:3; cursor: pointer;"
+                         id="overloadCard"
+                         role="button"
+                         tabindex="0"
+                         aria-haspopup="dialog"
+                         aria-controls="overloadStaffModal"
+                         onclick="openOverloadModal()"
+                         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openOverloadModal();}"
+                         title="Click to view overloaded staff list">
                         <div class="card-header-row">
                             <h3>Unhealthy / Overload</h3>
                             <div class="card-icon red"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg></div>
@@ -190,10 +200,11 @@
                         <div class="summary-value danger-value" id="overloadVal">
                             {{ $unhealthyStaffCount ?? 0 }} Staff
                         </div>
-                        <div class="card-footer">
+                        <div class="card-footer" style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="sub-text {{ ($unhealthyStaffCount ?? 0) > 0 ? 'danger-text' : '' }}" id="overloadSubText">
                                 {{ ($unhealthyStaffCount ?? 0) > 0 ? 'Need HR Attention!' : 'Normal Workload' }}
                             </span>
+                            <span style="font-size:0.75rem; font-weight:600; color:#e11d48;">View list &rarr;</span>
                         </div>
                     </div>
 
@@ -872,6 +883,9 @@
                         currentSlide = 0;
                         renderAISlide(0);
                     }
+                    if (Array.isArray(payload.overloadedDepartments)) {
+                        overloadedDepartments = payload.overloadedDepartments;
+                    }
                 }
 
                 const freshAiBadge = doc.getElementById('aiStatusBadge');
@@ -1140,191 +1154,481 @@
 </script>
 </body>
 
+<!-- UNHEALTHY / OVERLOAD STAFF MODAL (GROUPED BY DEPARTMENT) -->
+<style>
+    #overloadCard {
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    #overloadCard:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(225, 29, 72, 0.14);
+        border-color: #fda4af;
+    }
+    .overload-modal-card {
+        background: #fff;
+        width: 100%;
+        max-width: 680px;
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.24);
+        overflow: hidden;
+        animation: modalPop 0.2s ease-out;
+    }
+    .overload-modal-body {
+        padding: 18px 20px;
+        max-height: 64vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    .overload-dept-group {
+        border: 1px solid #fecdd3;
+        border-radius: 14px;
+        background: #fff;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+    .overload-dept-header {
+        background: #fff1f2;
+        padding: 12px 16px;
+        border-bottom: 1px solid #fecdd3;
+        border-radius: 13px 13px 0 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .overload-dept-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #881337;
+    }
+    .overload-dept-count {
+        background: #be123c;
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+    }
+    .overload-leader-sub {
+        font-size: 0.77rem;
+        color: #475569;
+        margin-top: 3px;
+    }
+    .overload-dept-staff-list {
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .overload-staff-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border: 1px solid #f1f5f9;
+        background: #f8fafc;
+        border-radius: 10px;
+    }
+    .overload-staff-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+    .overload-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: #fee2e2;
+        color: #be123c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+    .overload-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .overload-name {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 2px;
+    }
+    .overload-meta {
+        font-size: 0.76rem;
+        color: #475569;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+    }
+    .overload-issue-pill {
+        background: #fef3c7;
+        color: #92400e;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 6px;
+        font-size: 0.72rem;
+    }
+    .overload-score-pill {
+        background: #fee2e2;
+        color: #b91c1c;
+        font-weight: 800;
+        font-size: 0.82rem;
+        padding: 4px 10px;
+        border-radius: 999px;
+        flex-shrink: 0;
+    }
+</style>
+
+<div class="ai-modal-backdrop" id="overloadStaffModal" role="dialog" aria-modal="true" aria-labelledby="overloadModalTitle"
+     onclick="if(event.target === this) closeOverloadModal()">
+    <div class="overload-modal-card">
+        <div class="ai-modal-header">
+            <h3 id="overloadModalTitle">
+                <svg class="icon" style="width:18px;height:18px;color:#fb7185;" aria-hidden="true"><use href="#i-alert"/></svg>
+                Unhealthy / Overload Staff (<span id="overloadModalCount">{{ $unhealthyStaffCount ?? 0 }}</span>)
+            </h3>
+            <button type="button" class="ai-modal-close" onclick="closeOverloadModal()" aria-label="Close">&times;</button>
+        </div>
+
+        <div style="padding:10px 20px; background:#fef2f2; border-bottom:1px solid #fee2e2; font-size:0.8rem; color:#991b1b;">
+            Grouped by department. Click <strong>AI Email Leader</strong> to send one consolidated action plan to the department leader.
+        </div>
+
+        <div class="overload-modal-body" id="overloadModalBody"></div>
+
+        <div class="ai-modal-footer" style="justify-content:flex-end;">
+            <button type="button" class="ai-btn-secondary" onclick="closeOverloadModal()">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- AI EMAIL REMINDER MODAL -->
- <style>
-     .ai-remind-btn {
-         display: inline-flex; align-items: center; gap: 6px;
-         background: linear-gradient(135deg, #be123c, #e11d48);
-         color: #fff; border: none; border-radius: 8px;
-         padding: 6px 12px; font-size: 0.8rem; font-weight: 600;
-         cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;
-     }
-     .ai-remind-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(225, 29, 72, 0.28); }
-     .ai-modal-backdrop {
-         position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
-         backdrop-filter: blur(3px); display: none; align-items: center;
-         justify-content: center; z-index: 9999; padding: 16px;
-     }
-     .ai-modal-backdrop.open { display: flex; }
-     .ai-modal-card {
-         background: #fff; width: 100%; max-width: 560px; border-radius: 16px;
-         box-shadow: 0 20px 40px rgba(15, 23, 42, 0.22); overflow: hidden;
-         animation: modalPop 0.2s ease-out;
-     }
-     @keyframes modalPop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-     .ai-modal-header {
-         background: #111827; color: #fff; padding: 16px 20px;
-         display: flex; align-items: center; justify-content: space-between;
-     }
-     .ai-modal-header h3 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
-     .ai-modal-close { background: none; border: none; color: #9ca3af; font-size: 1.4rem; cursor: pointer; line-height: 1; }
-     .ai-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-     .ai-field label { display: block; font-size: 0.78rem; font-weight: 700; color: #374151; margin-bottom: 4px; text-transform: uppercase; }
-     .ai-field input, .ai-field textarea {
-         width: 100%; border: 1px solid #d1d5db; border-radius: 8px;
-         padding: 9px 12px; font-size: 0.9rem; font-family: inherit; color: #111827;
-     }
-     .ai-field textarea { min-height: 165px; resize: vertical; line-height: 1.5; }
-     .ai-modal-footer {
-         padding: 14px 20px; background: #f9fafb; border-top: 1px solid #e5e7eb;
-         display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
-     }
-     .ai-btn-secondary {
-         background: #fff; border: 1px solid #d1d5db; color: #374151;
-         padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
-     }
-     .ai-btn-primary {
-         background: #be123c; border: none; color: #fff;
-         padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
-     }
- </style>
+<style>
+    .ai-remind-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: linear-gradient(135deg, #be123c, #e11d48);
+        color: #fff; border: none; border-radius: 8px;
+        padding: 6px 12px; font-size: 0.8rem; font-weight: 600;
+        cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .ai-remind-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(225, 29, 72, 0.28); }
+    .ai-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(3px); display: none; align-items: center;
+        justify-content: center; z-index: 9999; padding: 16px;
+    }
+    .ai-modal-backdrop.open { display: flex; }
+    .ai-modal-card {
+        background: #fff; width: 100%; max-width: 560px; border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.22); overflow: hidden;
+        animation: modalPop 0.2s ease-out;
+    }
+    @keyframes modalPop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+    .ai-modal-header {
+        background: #111827; color: #fff; padding: 16px 20px;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .ai-modal-header h3 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+    .ai-modal-close { background: none; border: none; color: #9ca3af; font-size: 1.4rem; cursor: pointer; line-height: 1; }
+    .ai-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .ai-field label { display: block; font-size: 0.78rem; font-weight: 700; color: #374151; margin-bottom: 4px; text-transform: uppercase; }
+    .ai-field input, .ai-field textarea {
+        width: 100%; border: 1px solid #d1d5db; border-radius: 8px;
+        padding: 9px 12px; font-size: 0.9rem; font-family: inherit; color: #111827;
+    }
+    .ai-field textarea { min-height: 165px; resize: vertical; line-height: 1.5; }
+    .ai-modal-footer {
+        padding: 14px 20px; background: #f9fafb; border-top: 1px solid #e5e7eb;
+        display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .ai-btn-secondary {
+        background: #fff; border: 1px solid #d1d5db; color: #374151;
+        padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    }
+    .ai-btn-primary {
+        background: #be123c; border: none; color: #fff;
+        padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    }
+</style>
 
- <div class="ai-modal-backdrop" id="aiReminderModal" role="dialog" aria-modal="true" aria-labelledby="aiModalTitle">
-     <div class="ai-modal-card">
-         <div class="ai-modal-header">
-             <h3 id="aiModalTitle">
-                 <svg class="icon" style="width:18px;height:18px;color:#fb7185;" aria-hidden="true"><use href="#i-sparkles"/></svg>
-                 AI Smart Email Reminder (<span id="aiModalDept">DEPT</span>)
-             </h3>
-             <button type="button" class="ai-modal-close" onclick="closeAiReminderModal()" aria-label="Close">&times;</button>
-         </div>
+<div class="ai-modal-backdrop" id="aiReminderModal" role="dialog" aria-modal="true" aria-labelledby="aiModalTitle"
+     onclick="if(event.target === this) closeAiReminderModal()">
+    <div class="ai-modal-card">
+        <div class="ai-modal-header">
+            <h3 id="aiModalTitle">
+                <svg class="icon" style="width:18px;height:18px;color:#fb7185;" aria-hidden="true"><use href="#i-sparkles"/></svg>
+                AI Smart Email Reminder (<span id="aiModalDept">DEPT</span>)
+            </h3>
+            <button type="button" class="ai-modal-close" onclick="closeAiReminderModal()" aria-label="Close">&times;</button>
+        </div>
 
-         <div class="ai-modal-body">
-             <div id="aiModalLoading" style="text-align:center; padding:32px 12px; color:#4b5563;">
-                 <p style="font-weight:600; margin-bottom:6px;">Generating personalized email draft with Gemini AI...</p>
-                 <small style="color:#6b7280;">Analyzing evaluation records & department deadline</small>
-             </div>
+        <div class="ai-modal-body">
+            <div id="aiModalLoading" style="text-align:center; padding:32px 12px; color:#4b5563;">
+                <p style="font-weight:600; margin-bottom:6px;">Generating personalized email draft with Gemini AI...</p>
+                <small style="color:#6b7280;">Analyzing evaluation records & department deadline</small>
+            </div>
 
-             <div id="aiModalForm" style="display:none; flex-direction:column; gap:12px;">
-                 <div class="ai-field">
-                     <label for="aiDraftTo">Recipient (<span id="aiDraftRecipientName">-</span>)</label>
-                     <input type="email" id="aiDraftTo" placeholder="recipient@infiniteloop.com.my">
-                 </div>
-                 <div class="ai-field">
-                     <label for="aiDraftSubject">Email Subject</label>
-                     <input type="text" id="aiDraftSubject">
-                 </div>
-                 <div class="ai-field">
-                     <label for="aiDraftBody">AI-Generated Message</label>
-                     <textarea id="aiDraftBody"></textarea>
-                 </div>
-             </div>
-         </div>
+            <div id="aiModalForm" style="display:none; flex-direction:column; gap:12px;">
+                <div class="ai-field">
+                    <label for="aiDraftTo">Recipient (<span id="aiDraftRecipientName">-</span>)</label>
+                    <input type="email" id="aiDraftTo" placeholder="recipient@infiniteloop.com.my">
+                </div>
+                <div class="ai-field">
+                    <label for="aiDraftSubject">Email Subject</label>
+                    <input type="text" id="aiDraftSubject">
+                </div>
+                <div class="ai-field">
+                    <label for="aiDraftBody">AI-Generated Message</label>
+                    <textarea id="aiDraftBody"></textarea>
+                </div>
+            </div>
+        </div>
 
-         <div class="ai-modal-footer">
-             <button type="button" class="ai-btn-secondary" id="aiRegenerateBtn" onclick="regenerateCurrentDraft()">Regenerate</button>
-             <div style="display:flex; gap:8px;">
-                 <button type="button" class="ai-btn-secondary" id="aiCopyBtn" onclick="copyAiDraft()">Copy Draft</button>
-                 <button type="button" class="ai-btn-primary" onclick="openMailClient()">Open in Email App</button>
-             </div>
-         </div>
-     </div>
- </div>
+        <div class="ai-modal-footer">
+            <button type="button" class="ai-btn-secondary" id="aiRegenerateBtn" onclick="regenerateCurrentDraft()">Regenerate</button>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="ai-btn-secondary" id="aiCopyBtn" onclick="copyAiDraft()">Copy Draft</button>
+                <button type="button" class="ai-btn-primary" onclick="openMailClient()">Open in Email App</button>
+            </div>
+        </div>
+    </div>
+</div>
 
- <script>
-        let activeReminderWorkerId = null;
-        let activeReminderDept = '';
-        let reminderVariation = 1;
+<script>
+    let overloadedDepartments = @json($overloadedDepartments ?? []);
+    let activeReminderWorkerId = null;
+    let activeReminderDept = '';
+    let activeReminderMode = 'default';
+    let reminderVariation = 1;
+    let returnToOverloadModal = false;
 
-        function openAiReminderModal(workerId, deptName) {
-            activeReminderWorkerId = workerId;
-            activeReminderDept = deptName;
-            reminderVariation = 1;
-            document.getElementById('aiModalDept').textContent = deptName;
-            document.getElementById('aiReminderModal').classList.add('open');
-            fetchAiDraft(workerId, reminderVariation);
+    function renderOverloadDeptGroups() {
+        const body = document.getElementById('overloadModalBody');
+        const countEl = document.getElementById('overloadModalCount');
+        if (!body) return;
+
+        const totalStaff = overloadedDepartments.reduce((sum, g) => sum + (g.staff?.length || 0), 0);
+        if (countEl) countEl.textContent = totalStaff;
+
+        if (!overloadedDepartments.length || totalStaff === 0) {
+            body.innerHTML = `
+                <div style="text-align:center; padding:32px 16px; color:#64748b;">
+                    <p style="font-weight:700; color:#16a34a; margin-bottom:4px;">All Clear!</p>
+                    <small>No staff members are currently below the 75% KPI threshold.</small>
+                </div>`;
+            return;
         }
 
-        function closeAiReminderModal() {
-            document.getElementById('aiReminderModal').classList.remove('open');
+        body.innerHTML = overloadedDepartments.map(group => {
+            const staffRowsHtml = (group.staff || []).map(staff => {
+                const score = Number(staff.kpi_score ?? 0).toFixed(1);
+                const tasks = Number(staff.unfinished_tasks ?? 0);
+                const avatar = staff.profile_photo
+                    ? `<img src="${esc(staff.profile_photo)}" alt="${esc(staff.full_name)}"
+                            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <svg class="icon" aria-hidden="true" style="display:none;"><use href="#i-user"/></svg>`
+                    : `<svg class="icon" aria-hidden="true"><use href="#i-user"/></svg>`;
+
+                return `
+                    <div class="overload-staff-row">
+                        <div class="overload-staff-left">
+                            <div class="overload-avatar">${avatar}</div>
+                            <div>
+                                <div class="overload-name">${esc(staff.full_name)}</div>
+                                <div class="overload-meta">
+                                    <span>ID: ${esc(staff.worker_id)}</span>
+                                    <span>&bull; ${tasks} pending ${tasks === 1 ? 'task' : 'tasks'}</span>
+                                    <span class="overload-issue-pill">${esc(staff.issue_tag || 'KPI Below 75%')}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="overload-score-pill">${score}% KPI</span>
+                    </div>`;
+            }).join('');
+
+            const leaderEmailText = group.leader_email ? ` &bull; ${esc(group.leader_email)}` : '';
+
+            return `
+                <div class="overload-dept-group">
+                    <div class="overload-dept-header">
+                        <div>
+                            <div class="overload-dept-title">
+                                <span>${esc(group.department)}</span>
+                                <span class="overload-dept-count">${group.staff_count} Staff</span>
+                            </div>
+                            <div class="overload-leader-sub">
+                                Leader: <strong>${esc(group.leader_name)}</strong>${leaderEmailText}
+                            </div>
+                        </div>
+                        <button type="button" class="ai-remind-btn"
+                                onclick="openDeptOverloadEmail('${esc(group.department)}')">
+                            <svg class="icon" style="width:14px;height:14px;" aria-hidden="true"><use href="#i-sparkles"/></svg>
+                            AI Email Leader
+                        </button>
+                    </div>
+                    <div class="overload-dept-staff-list">
+                        ${staffRowsHtml}
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    function openOverloadModal() {
+        renderOverloadDeptGroups();
+        document.getElementById('overloadStaffModal')?.classList.add('open');
+    }
+
+    function closeOverloadModal() {
+        document.getElementById('overloadStaffModal')?.classList.remove('open');
+    }
+
+    // 1. Buka Modal AI Email dari dalam Modal Overload (untuk 1 Jabatan sekaligus)
+    function openDeptOverloadEmail(deptName) {
+        returnToOverloadModal = true;
+        closeOverloadModal();
+
+        activeReminderMode = 'department_overload';
+        activeReminderWorkerId = null;
+        activeReminderDept = deptName;
+        reminderVariation = 1;
+
+        document.getElementById('aiModalDept').textContent = `${deptName} — Overload Report`;
+        document.getElementById('aiReminderModal').classList.add('open');
+        fetchAiDraft();
+    }
+
+    // 2. Buka Modal AI Email dari Jadual Departments' Performance (flow asal)
+    function openAiReminderModal(workerId, deptName) {
+        returnToOverloadModal = false;
+        activeReminderMode = 'default';
+        activeReminderWorkerId = workerId;
+        activeReminderDept = deptName;
+        reminderVariation = 1;
+
+        document.getElementById('aiModalDept').textContent = deptName;
+        document.getElementById('aiReminderModal').classList.add('open');
+        fetchAiDraft();
+    }
+
+    // 3. Tutup Modal AI Email — balik ke Modal Overload jika datang dari sana
+    function closeAiReminderModal() {
+        document.getElementById('aiReminderModal').classList.remove('open');
+        if (returnToOverloadModal) {
+            returnToOverloadModal = false;
+            openOverloadModal();
         }
+    }
 
-        function regenerateCurrentDraft() {
-            if (!activeReminderWorkerId) return;
-            reminderVariation++;
-            fetchAiDraft(activeReminderWorkerId, reminderVariation);
-        }
+    function regenerateCurrentDraft() {
+        reminderVariation++;
+        fetchAiDraft();
+    }
 
-        async function fetchAiDraft(workerId, variation = 1) {
-            const loading = document.getElementById('aiModalLoading');
-            const form = document.getElementById('aiModalForm');
-            const regenBtn = document.getElementById('aiRegenerateBtn');
+    async function fetchAiDraft() {
+        const loading = document.getElementById('aiModalLoading');
+        const form = document.getElementById('aiModalForm');
+        const regenBtn = document.getElementById('aiRegenerateBtn');
 
-            loading.style.display = 'block';
-            form.style.display = 'none';
-            regenBtn.disabled = true;
-            regenBtn.textContent = 'Generating...';
+        loading.style.display = 'block';
+        form.style.display = 'none';
+        regenBtn.disabled = true;
+        regenBtn.textContent = 'Generating...';
 
-            try {
-                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                const res = await fetch("{{ route('hr.ai.reminder') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': token
-                    },
-                    body: JSON.stringify({
-                        worker_id: workerId,
-                        variation: variation
-                    })
-                });
+        const payload = activeReminderMode === 'department_overload'
+            ? {
+                mode: 'department_overload',
+                department: activeReminderDept,
+                variation: reminderVariation
+              }
+            : {
+                mode: 'default',
+                worker_id: activeReminderWorkerId,
+                variation: reminderVariation
+              };
 
-                const data = await res.json();
-                if (data.status === 'success' && data.draft) {
-                    document.getElementById('aiDraftRecipientName').textContent = `${data.draft.recipient_name} (${data.draft.recipient_role})`;
-                    document.getElementById('aiDraftTo').value = data.draft.recipient_email || '';
-                    document.getElementById('aiDraftSubject').value = data.draft.subject || '';
-                    document.getElementById('aiDraftBody').value = data.draft.body || '';
-                }
-            } catch (err) {
-                console.error('AI Draft Error:', err);
-            } finally {
-                loading.style.display = 'none';
-                form.style.display = 'flex';
-                regenBtn.disabled = false;
-                regenBtn.textContent = 'Regenerate';
+        try {
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const res = await fetch("{{ route('hr.ai.reminder') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (data.status === 'success' && data.draft) {
+                document.getElementById('aiDraftRecipientName').textContent = `${data.draft.recipient_name} (${data.draft.recipient_role})`;
+                document.getElementById('aiDraftTo').value = data.draft.recipient_email || '';
+                document.getElementById('aiDraftSubject').value = data.draft.subject || '';
+                document.getElementById('aiDraftBody').value = data.draft.body || '';
             }
+        } catch (err) {
+            console.error('AI Draft Error:', err);
+        } finally {
+            loading.style.display = 'none';
+            form.style.display = 'flex';
+            regenBtn.disabled = false;
+            regenBtn.textContent = 'Regenerate';
         }
+    }
 
-        function copyAiDraft() {
-            const subject = document.getElementById('aiDraftSubject').value;
-            const body = document.getElementById('aiDraftBody').value;
-            navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
-            const btn = document.getElementById('aiCopyBtn');
-            btn.textContent = 'Copied!';
-            setTimeout(() => { btn.textContent = 'Copy Draft'; }, 2000);
-        }
+    function copyAiDraft() {
+        const subject = document.getElementById('aiDraftSubject').value;
+        const body = document.getElementById('aiDraftBody').value;
+        navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+        const btn = document.getElementById('aiCopyBtn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy Draft'; }, 2000);
+    }
 
-        function openMailClient() {
-            const to = encodeURIComponent(document.getElementById('aiDraftTo').value);
-            const subject = encodeURIComponent(document.getElementById('aiDraftSubject').value);
-            const body = encodeURIComponent(document.getElementById('aiDraftBody').value);
-            window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
-        }
+    function openMailClient() {
+        const to = encodeURIComponent(document.getElementById('aiDraftTo').value);
+        const subject = encodeURIComponent(document.getElementById('aiDraftSubject').value);
+        const body = encodeURIComponent(document.getElementById('aiDraftBody').value);
+        window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+    }
 
-        // Papar teks penuh apabila tetikus hover pada kandungan kad AI
-        const aiCardEl = document.getElementById('aiCardContent');
-        if (aiCardEl) {
-            const applyAiTooltips = () => {
-                aiCardEl.querySelectorAll('h3, h4, p, div, span').forEach(el => {
-                    if (el.children.length === 0 && el.textContent.trim().length > 0) {
-                        el.title = el.textContent.trim();
-                    }
-                });
-            };
-            applyAiTooltips();
-            new MutationObserver(applyAiTooltips).observe(aiCardEl, { childList: true, subtree: true });
+    // Kawalan kekunci Escape ikut susunan modal aktif
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        const aiModal = document.getElementById('aiReminderModal');
+        const overloadModal = document.getElementById('overloadStaffModal');
+
+        if (aiModal && aiModal.classList.contains('open')) {
+            closeAiReminderModal();
+        } else if (overloadModal && overloadModal.classList.contains('open')) {
+            closeOverloadModal();
         }
-    </script>
+    });
+
+    // Papar teks penuh apabila tetikus hover pada kandungan kad AI
+    const aiCardEl = document.getElementById('aiCardContent');
+    if (aiCardEl) {
+        const applyAiTooltips = () => {
+            aiCardEl.querySelectorAll('h3, h4, p, div, span').forEach(el => {
+                if (el.children.length === 0 && el.textContent.trim().length > 0) {
+                    el.title = el.textContent.trim();
+                }
+            });
+        };
+        applyAiTooltips();
+        new MutationObserver(applyAiTooltips).observe(aiCardEl, { childList: true, subtree: true });
+    }
+</script>
 </html>

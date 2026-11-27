@@ -534,9 +534,90 @@ class FypController extends Controller
     public function hrDashboard(Request $request)
     {
         $avgKpiScore = round(User::avg('kpi_score') ?? 0, 1);
-        $unhealthyStaffCount = User::where('role', 'STAFF')
-                                ->where('kpi_score', '<', 75)
-                                ->count();
+
+        $allDepts = Department::all();
+        $deptNamesById = $allDepts->pluck('department_name', 'department_id');
+
+        $unfinishedTasksByWorker = Schema::hasTable('tasks_etracker')
+            ? DB::table('tasks_etracker')
+                ->whereRaw('UPPER(TRIM(status)) != ?', ['COMPLETED'])
+                ->select('worker_id', DB::raw('COUNT(*) as total'))
+                ->groupBy('worker_id')
+                ->pluck('total', 'worker_id')
+            : collect();
+
+        $kpiSetting   = KpiSetting::first();
+        $tasksWeight  = (float) ($kpiSetting->tasks_weightage ?? 40);
+        $attWeight    = (float) ($kpiSetting->attendance_weightage ?? 20);
+        $leaderWeight = (float) ($kpiSetting->leader_weightage ?? 40);
+
+        $rawOverloaded = User::whereIn(DB::raw('UPPER(TRIM(role))'), ['STAFF', 'WORKER'])
+            ->where('kpi_score', '<', 75)
+            ->orderBy('kpi_score', 'asc')
+            ->get()
+            ->map(function ($u) use ($deptNamesById, $unfinishedTasksByWorker, $tasksWeight, $attWeight, $leaderWeight) {
+                $raw = $u->profile_photo;
+                $photoUrl = null;
+                if (!empty($raw)) {
+                    $clean = ltrim($raw, '/');
+                    $photoUrl = (str_starts_with($raw, 'http://') || str_starts_with($raw, 'https://') || str_starts_with($raw, '/'))
+                        ? $raw
+                        : (str_starts_with($clean, 'uploads/') || str_starts_with($clean, 'storage/')
+                            ? asset($clean)
+                            : asset('storage/' . $clean));
+                }
+
+                $deptName  = strtoupper(trim($deptNamesById[$u->department_id] ?? 'GENERAL'));
+                $pending   = (int) ($unfinishedTasksByWorker[$u->worker_id] ?? 0);
+
+                $latestEval = DB::table('monthly_evaluations')
+                    ->where('worker_id', $u->worker_id)
+                    ->orderByDesc('evaluation_year')
+                    ->orderByDesc('evaluation_month')
+                    ->first();
+
+                $issueTag = 'KPI Below 75%';
+                if ($pending >= 3 || ($latestEval && ((float) $latestEval->tasks_score / max(1, $tasksWeight)) < 0.70)) {
+                    $issueTag = 'Low Task Completion';
+                } elseif ($latestEval && ((float) $latestEval->attendance_score / max(1, $attWeight)) < 0.85) {
+                    $issueTag = 'Attendance Deduction';
+                } elseif ($latestEval && (float) $latestEval->leader_score > 0 && ((float) $latestEval->leader_score / max(1, $leaderWeight)) < 0.70) {
+                    $issueTag = 'Low Leader Rating';
+                }
+
+                return [
+                    'worker_id'        => $u->worker_id,
+                    'full_name'        => $u->full_name,
+                    'department'       => $deptName,
+                    'kpi_score'        => round((float) ($u->kpi_score ?? 0), 1),
+                    'unfinished_tasks' => $pending,
+                    'issue_tag'        => $issueTag,
+                    'profile_photo'    => $photoUrl,
+                ];
+            });
+
+        $unhealthyStaffCount = $rawOverloaded->count();
+
+        // Asingkan pekerja overload mengikut Jabatan + dapatkan info Leader jabatan
+        $overloadedDepartments = $rawOverloaded->groupBy('department')->map(function ($staffGroup, $deptName) use ($allDepts) {
+            $matchingDeptIds = $allDepts
+                ->filter(fn($d) => strtoupper(trim($d->department_name)) === $deptName)
+                ->pluck('department_id')
+                ->all();
+
+            $leader = User::whereIn('department_id', $matchingDeptIds)
+                ->whereRaw('UPPER(TRIM(role)) = ?', ['LEADER'])
+                ->first();
+
+            return [
+                'department'   => $deptName,
+                'leader_id'    => $leader->worker_id ?? '',
+                'leader_name'  => $leader->full_name ?? 'No Leader Assigned',
+                'leader_email' => $leader->email ?? '',
+                'staff_count'  => $staffGroup->count(),
+                'staff'        => $staffGroup->values()->all(),
+            ];
+        })->values()->all();
 
         $evalYear       = (int) date('Y');
         $evalMonth      = (int) date('n');
@@ -701,6 +782,7 @@ class FypController extends Controller
         return view('hr', compact(
             'avgKpiScore',
             'unhealthyStaffCount',
+            'overloadedDepartments',
             'targetAchievement',
             'kpiTrendDiff',
             'departmentsPerformance',
@@ -713,23 +795,70 @@ class FypController extends Controller
     }
 
     // JANA SEMULA ANALISIS AI SECARA LANGSUNG (BUTANG REFRESH)
-    public function refreshAiInsights(AIAnalysisService $aiService)
+    public function refreshAiInsights(Request $request, AIAnalysisService $aiService)
     {
+        $variation = (int) $request->input('variation', 0);
+        if ($variation <= 0) {
+            $variation = ((int) session('hr_ai_variation', 1)) + 1;
+        }
+        session(['hr_ai_variation' => $variation]);
+
         Cache::forget('hr_ai_overview_insights');
 
-        $aiPayload = Cache::remember('hr_ai_overview_insights', now()->addHours(6), function () use ($aiService) {
-            return $aiService->analyzeHrOverview();
-        });
+        $aiPayload = $aiService->analyzeHrOverview($variation);
+        $ttl = ($aiPayload['source'] ?? '') === 'gemini-ai' ? now()->addHours(6) : now()->addSeconds(30);
+        Cache::put('hr_ai_overview_insights', $aiPayload, $ttl);
 
-        $sourceLabel = ($aiPayload['source'] ?? '') === 'gemini-ai' ? 'Gemini AI Live' : 'Smart Fallback';
+        $aiSource = $aiPayload['source'] ?? 'fallback';
+
+        $aiInsights = collect($aiPayload['insights'] ?? [])->map(function ($item) {
+            return [
+                'tag'     => $item['tag'] ?? 'AI Insight',
+                'title'   => $item['title'] ?? 'Performance Update',
+                'desc'    => $item['summary'] ?? ($item['desc'] ?? ''),
+                'details' => $item['details'] ?? ($item['summary'] ?? ($item['desc'] ?? '')),
+                'stat'    => !empty($item['recommendation'])
+                    ? 'Action: ' . $item['recommendation']
+                    : ($item['stat'] ?? ''),
+            ];
+        })->values()->all();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'status'     => 'success',
+                'aiSource'   => $aiSource,
+                'aiInsights' => $aiInsights,
+            ]);
+        }
+
+        $sourceLabel = $aiSource === 'gemini-ai' ? 'Gemini AI Live' : 'Smart Fallback';
 
         return back()->with('success', "AI Insights updated ({$sourceLabel}).");
     }
 
-    // JANA DRAF EMEL PERINGATAN AUTOMATIK BERBANTUKAN AI
-    // JANA DRAF EMEL PERINGATAN AUTOMATIK BERBANTUKAN AI
+   // JANA DRAF EMEL PERINGATAN AUTOMATIK BERBANTUKAN AI
     public function generateAiReminderDraft(Request $request, AIAnalysisService $aiService)
     {
+        $mode      = (string) $request->input('mode', 'default');
+        $variation = (int) $request->input('variation', 1);
+
+        if ($mode === 'department_overload') {
+            $request->validate([
+                'department' => 'required|string',
+                'variation'  => 'nullable|integer|min:1|max:20',
+            ]);
+
+            $draft = $aiService->generateDepartmentOverloadDraft(
+                $request->input('department'),
+                $variation
+            );
+
+            return response()->json([
+                'status' => 'success',
+                'draft'  => $draft,
+            ]);
+        }
+
         $request->validate([
             'worker_id' => 'required|string',
             'variation' => 'nullable|integer|min:1|max:20',
@@ -737,7 +866,7 @@ class FypController extends Controller
 
         $draft = $aiService->generateReminderDraft(
             $request->worker_id,
-            (int) $request->input('variation', 1)
+            $variation
         );
 
         return response()->json([
@@ -745,36 +874,6 @@ class FypController extends Controller
             'draft'  => $draft,
         ]);
     }
-
-    public function kpiManagement(Request $request)
-    {
-        $selectedQuarter = $request->get('quarter', 'Q' . (int) ceil(date('n') / 3));
-        $masterDepartments = ['WebTech', 'R&D', 'Video Production', 'Graphic Design'];
-
-        $existingRecords = Department::where('quarter', $selectedQuarter)
-                            ->get()
-                            ->keyBy('department_name');
-
-        $departments = collect($masterDepartments)->map(function ($deptName) use ($existingRecords, $selectedQuarter) {
-            if ($existingRecords->has($deptName)) {
-                return $existingRecords->get($deptName);
-            }
-
-            return (object) [
-                'department_id'   => null,
-                'department_name' => $deptName,
-                'target_score'    => 80,
-                'assigned_by'     => 'HR Manager',
-                'status'          => 'Pending',
-                'quarter'         => $selectedQuarter
-            ];
-        });
-
-        $setting = KpiSetting::first();
-
-        return view('kpi-management', compact('departments', 'setting', 'selectedQuarter'));
-    }
-
     public function updateFormula(Request $request)
     {
         KpiSetting::where('setting_id', 1)->update([
